@@ -1,0 +1,37 @@
+{
+  "messName": "Hostel Mess",
+  "targetGroupId": "",
+  "targetGroupName": "Not Selected",
+  "port": 3000,
+  "timings": {
+    "breakfast": {
+      "enabled": true,
+      "time": "07:30",
+      "title": "Breakfast",
+      "emoji": "🌅",
+      "servingTime": "7:30 AM - 9:30 AM"
+    },
+    "lunch": {
+      "enabled": true,
+      "time": "12:30",
+      "title": "Lunch",
+      "emoji": "🍛",
+      "servingTime": "12:30 PM - 2:30 PM"
+    },
+    "snacks": {
+      "enabled": true,
+      "time": "17:00",
+      "title": "Evening Snacks",
+      "emoji": "☕",
+      "servingTime": "5:00 PM - 6:30 PM"
+    },
+    "dinner": {
+      "enabled": true,
+      "time": "19:45",
+      "title": "Dinner",
+      "emoji": "🍲",
+      "servingTime": "7:45 PM - 9:45 PM"
+    }
+  },
+  "template": "🍽️ *{messName} • {mealUpper}* 🍽️\n📅 *{day}, {date}*\n━━━━━━━━━━━━━━━━━━━━\n{itemsList}\n━━━━━━━━━━━━━━━━━━━━\n⏰ *Serving Time:* {servingTime}\n✨ Have a wonderful meal!"
+}

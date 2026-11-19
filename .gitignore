@@ -1,0 +1,9 @@
+node_modules/
+npm-debug.log*
+uploads/*
+!uploads/.gitkeep
+auth_info_baileys/
+.env
+.DS_Store
+*.log
+

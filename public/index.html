@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MessMate • WhatsApp Mess Menu Automation</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-['Plus_Jakarta_Sans',sans-serif] selection:bg-emerald-500 selection:text-white">
+
+  <!-- Top Navigation Bar -->
+  <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20 text-white font-bold text-xl">
+          <i class="fa-solid fa-utensils"></i>
+        </div>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+            MessMate
+            <span class="text-xs bg-emerald-500/20 text-emerald-400 font-semibold px-2 py-0.5 rounded-full border border-emerald-500/30">Auto WhatsApp</span>
+          </h1>
+          <p class="text-xs text-slate-400">Scheduled Meal Notifications</p>
+        </div>
+      </div>
+
+      <!-- Quick Status Badges -->
+      <div class="flex items-center space-x-3">
+        <!-- Next Alert Badge -->
+        <div id="nextAlertBadge" class="hidden sm:flex items-center gap-2 bg-slate-800/90 border border-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium">
+          <i class="fa-regular fa-clock text-emerald-400"></i>
+          <span class="text-slate-400">Next Alert:</span>
+          <span id="nextAlertText" class="text-slate-200 font-semibold">Calculating...</span>
+        </div>
+
+        <!-- WhatsApp Connection Pill -->
+        <div id="waStatusPill" class="flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold bg-amber-500/10 border-amber-500/30 text-amber-400">
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+          <span id="waStatusText">Connecting WhatsApp...</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notification Banner / Toast Container -->
+  <div id="toastContainer" class="fixed top-20 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Hero / Next Trigger Card & Quick Controls -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- Card 1: Today's Active Menu & Quick Broadcast -->
+      <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
+        <div class="absolute -right-16 -top-16 w-56 h-56 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-semibold uppercase tracking-wider" id="todayDayBadge">Today</span>
+              <span class="text-sm font-medium text-slate-400" id="todayDateStr">20 November 2026</span>
+            </div>
+            <div class="text-xs text-slate-400 flex items-center gap-1.5">
+              <i class="fa-solid fa-users text-emerald-400"></i> Target: <strong class="text-slate-200" id="targetGroupNameHeader">None Selected</strong>
+            </div>
+          </div>
+
+          <h2 class="text-2xl font-bold text-white mb-2">Today's Mess Schedule</h2>
+          <p class="text-sm text-slate-400 mb-6">Automated notifications trigger at your set times. You can also send any meal immediately with 1-click below.</p>
+
+          <!-- 4 Meal Cards Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <!-- Breakfast -->
+            <div class="meal-card bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 hover:border-emerald-500/50 transition">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xl">🌅</span>
+                <span id="timeBadgeBreakfast" class="text-xs font-mono bg-slate-900 text-emerald-400 px-2 py-0.5 rounded font-medium">07:30</span>
+              </div>
+              <h3 class="text-sm font-bold text-white mb-1">Breakfast</h3>
+              <p id="todayBreakfastPreview" class="text-xs text-slate-400 line-clamp-2 h-8 mb-3">Loading menu...</p>
+              <button onclick="sendMealNow('breakfast')" class="w-full py-1.5 px-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-paper-plane text-[10px]"></i> Send Now
+              </button>
+            </div>
+
+            <!-- Lunch -->
+            <div class="meal-card bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 hover:border-emerald-500/50 transition">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xl">🍛</span>
+                <span id="timeBadgeLunch" class="text-xs font-mono bg-slate-900 text-emerald-400 px-2 py-0.5 rounded font-medium">12:30</span>
+              </div>
+              <h3 class="text-sm font-bold text-white mb-1">Lunch</h3>
+              <p id="todayLunchPreview" class="text-xs text-slate-400 line-clamp-2 h-8 mb-3">Loading menu...</p>
+              <button onclick="sendMealNow('lunch')" class="w-full py-1.5 px-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-paper-plane text-[10px]"></i> Send Now
+              </button>
+            </div>
+
+            <!-- Snacks -->
+            <div class="meal-card bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 hover:border-emerald-500/50 transition">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xl">☕</span>
+                <span id="timeBadgeSnacks" class="text-xs font-mono bg-slate-900 text-emerald-400 px-2 py-0.5 rounded font-medium">17:00</span>
+              </div>
+              <h3 class="text-sm font-bold text-white mb-1">Snacks</h3>
+              <p id="todaySnacksPreview" class="text-xs text-slate-400 line-clamp-2 h-8 mb-3">Loading menu...</p>
+              <button onclick="sendMealNow('snacks')" class="w-full py-1.5 px-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-paper-plane text-[10px]"></i> Send Now
+              </button>
+            </div>
+
+            <!-- Dinner -->
+            <div class="meal-card bg-slate-800/60 border border-slate-700/60 rounded-xl p-3.5 hover:border-emerald-500/50 transition">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-xl">🍲</span>
+                <span id="timeBadgeDinner" class="text-xs font-mono bg-slate-900 text-emerald-400 px-2 py-0.5 rounded font-medium">19:45</span>
+              </div>
+              <h3 class="text-sm font-bold text-white mb-1">Dinner</h3>
+              <p id="todayDinnerPreview" class="text-xs text-slate-400 line-clamp-2 h-8 mb-3">Loading menu...</p>
+              <button onclick="sendMealNow('dinner')" class="w-full py-1.5 px-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition">
+                <i class="fa-solid fa-paper-plane text-[10px]"></i> Send Now
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: WhatsApp Link Status & QR / Group Selector -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-brands fa-whatsapp text-emerald-400 text-lg"></i> WhatsApp Sync
+            </h3>
+            <button onclick="refreshWhatsApp()" title="Refresh Status" class="text-slate-400 hover:text-white text-xs p-1.5 rounded-lg hover:bg-slate-800 transition">
+              <i class="fa-solid fa-rotate"></i>
+            </button>
+          </div>
+
+          <!-- If Disconnected / Showing QR -->
+          <div id="waQrBox" class="space-y-4">
+            <div class="bg-white p-3 rounded-xl max-w-[200px] mx-auto shadow-md aspect-square flex items-center justify-center">
+              <img id="qrImg" class="w-full h-full object-contain hidden" alt="WhatsApp QR Code" />
+              <div id="qrLoading" class="text-slate-400 text-center text-xs flex flex-col items-center gap-2">
+                <i class="fa-solid fa-circle-notch fa-spin text-xl text-emerald-600"></i>
+                <span>Generating QR...</span>
+              </div>
+            </div>
+            <div class="text-center">
+              <p class="text-xs font-medium text-slate-200">Scan with WhatsApp</p>
+              <p class="text-[11px] text-slate-400 mt-0.5">WhatsApp > Settings > Linked Devices > Link a Device</p>
+            </div>
+          </div>
+
+          <!-- If Connected -->
+          <div id="waConnectedBox" class="hidden space-y-4">
+            <div class="p-3.5 bg-emerald-950/30 border border-emerald-500/20 rounded-xl flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-lg">
+                <i class="fa-solid fa-user-check"></i>
+              </div>
+              <div class="overflow-hidden flex-1">
+                <h4 id="waUserName" class="text-sm font-semibold text-white truncate">Connected Account</h4>
+                <p id="waUserPhone" class="text-xs font-mono text-emerald-400 truncate">+91 00000 00000</p>
+              </div>
+              <button onclick="disconnectWhatsApp()" class="text-xs text-rose-400 hover:text-rose-300 p-2 hover:bg-rose-500/10 rounded-lg transition" title="Log Out / Switch Account">
+                <i class="fa-solid fa-power-off"></i>
+              </button>
+            </div>
+
+            <!-- Target Group Selector -->
+            <div class="space-y-2">
+              <label class="block text-xs font-semibold text-slate-300">Target WhatsApp Group</label>
+              <div class="flex gap-2">
+                <select id="groupSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
+                  <option value="">-- Select a WhatsApp Group --</option>
+                </select>
+                <button onclick="loadGroups()" title="Fetch latest groups" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg text-xs transition">
+                  <i class="fa-solid fa-arrows-rotate"></i>
+                </button>
+              </div>
+              <button onclick="saveSelectedGroup()" class="w-full mt-2 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition">
+                <i class="fa-solid fa-check"></i> Set as Target Group
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="pt-4 mt-4 border-t border-slate-800 flex items-center justify-between">
+          <span class="text-[11px] text-slate-400">Need a quick test?</span>
+          <button onclick="sendTestGroupMessage()" class="text-xs text-emerald-400 hover:text-emerald-300 font-medium hover:underline flex items-center gap-1">
+            <i class="fa-solid fa-paper-plane text-[10px]"></i> Send Test Message
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="border-b border-slate-800">
+      <nav class="flex space-x-6 text-sm font-medium">
+        <button onclick="switchTab('menuTab')" id="tabBtn-menuTab" class="tab-btn pb-3 text-emerald-400 border-b-2 border-emerald-400 flex items-center gap-2 transition">
+          <i class="fa-solid fa-calendar-days"></i> Monthly Menu Manager
+        </button>
+        <button onclick="switchTab('timingsTab')" id="tabBtn-timingsTab" class="tab-btn pb-3 text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 transition">
+          <i class="fa-regular fa-clock"></i> Meal Timings & Schedule
+        </button>
+        <button onclick="switchTab('templateTab')" id="tabBtn-templateTab" class="tab-btn pb-3 text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 transition">
+          <i class="fa-solid fa-wand-magic-sparkles"></i> Message Template & Preview
+        </button>
+        <button onclick="switchTab('logsTab')" id="tabBtn-logsTab" class="tab-btn pb-3 text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 transition">
+          <i class="fa-solid fa-list-check"></i> Delivery History
+        </button>
+        <button onclick="switchTab('cloudTab')" id="tabBtn-cloudTab" class="tab-btn pb-3 text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center gap-2 transition">
+          <i class="fa-solid fa-cloud text-sky-400"></i> 24/7 Cloud (Laptop & Phone Off)
+        </button>
+      </nav>
+    </div>
+
+    <!-- TAB 1: Monthly Menu Manager (Upload + Table Editor) -->
+    <div id="menuTab" class="tab-content space-y-6">
+      
+      <!-- Big Drag & Drop Zone -->
+      <div id="dropZone" class="border-2 border-dashed border-slate-700 hover:border-emerald-500 bg-slate-900/60 rounded-3xl p-8 text-center transition-all cursor-pointer group relative overflow-hidden shadow-2xl">
+        <div class="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+        <input type="file" id="dragDropInput" accept=".xlsx, .xls, .csv" class="hidden" />
+        
+        <div class="max-w-md mx-auto space-y-3 pointer-events-none">
+          <div class="w-16 h-16 mx-auto rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-3xl group-hover:scale-110 group-hover:bg-emerald-500/20 transition-transform">
+            <i class="fa-solid fa-cloud-arrow-up"></i>
+          </div>
+          <div>
+            <h3 class="text-lg font-bold text-white group-hover:text-emerald-400 transition-colors">
+              Just Drop Your Monthly Excel File Here
+            </h3>
+            <p class="text-xs text-slate-400 mt-1">
+              Drag & drop your new <code class="text-emerald-400 font-mono">.xlsx</code> or <code class="text-emerald-400 font-mono">.csv</code> file, or click anywhere to select. It automatically parses and updates the schedule on its own!
+            </p>
+          </div>
+          <div class="pt-2 flex items-center justify-center gap-4 text-[11px] text-slate-500">
+            <span><i class="fa-solid fa-bolt text-amber-400 mr-1"></i> Auto-parsed instantly</span>
+            <span><i class="fa-solid fa-circle-check text-emerald-400 mr-1"></i> Zero extra clicks</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Template Download & Info Bar -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="md:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-300">
+              <i class="fa-solid fa-wand-magic-sparkles text-emerald-400"></i>
+            </div>
+            <div>
+              <h4 class="text-xs font-bold text-white">How Auto-Import Works</h4>
+              <p class="text-[11px] text-slate-400">Matches columns for Day (Mon-Sun), Breakfast, Lunch, Snacks, and Dinner automatically.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex items-center justify-between">
+          <div>
+            <h4 class="text-xs font-bold text-white">Need the template?</h4>
+            <p class="text-[11px] text-slate-400">Download formatted Excel sheet</p>
+          </div>
+          <a href="/sample_menu_template.xlsx" download="sample_menu_template.xlsx" class="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-file-arrow-down text-emerald-400"></i> Template
+          </a>
+        </div>
+      </div>
+
+      <!-- Live Editable Menu Table -->
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-table-list text-emerald-400"></i> Weekly Menu Schedule
+            </h3>
+            <p class="text-xs text-slate-400">You can also edit dishes directly in this table and click Save Menu below.</p>
+          </div>
+          <button onclick="saveTableMenu()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition">
+            <i class="fa-solid fa-floppy-disk"></i> Save Menu Changes
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 bg-slate-950/60 text-slate-300 font-semibold">
+                <th class="py-3 px-3 w-28">Day</th>
+                <th class="py-3 px-3">🌅 Breakfast</th>
+                <th class="py-3 px-3">🍛 Lunch</th>
+                <th class="py-3 px-3">☕ Evening Snacks</th>
+                <th class="py-3 px-3">🍲 Dinner</th>
+              </tr>
+            </thead>
+            <tbody id="menuTableBody" class="divide-y divide-slate-800/60 font-normal">
+              <!-- Dynamically populated rows for Mon-Sun -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: Meal Timings & Schedule -->
+    <div id="timingsTab" class="tab-content hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-clock text-emerald-400"></i> Daily Meal Notification Timings
+            </h3>
+            <p class="text-xs text-slate-400">Set the exact time when WhatsApp alerts should be dispatched to your group every day.</p>
+          </div>
+          <button onclick="saveTimingsSettings()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition">
+            <i class="fa-solid fa-floppy-disk"></i> Save Timings
+          </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          
+          <!-- Breakfast Config -->
+          <div class="bg-slate-950/60 border border-slate-800 p-5 rounded-xl space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">🌅</span>
+                <div>
+                  <h4 class="text-sm font-bold text-white">Breakfast Alert</h4>
+                  <p class="text-[11px] text-slate-400">Morning notification</p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="enableBreakfast" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Send Time (24h)</label>
+                <input type="time" id="timeBreakfast" value="07:30" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Serving Hours</label>
+                <input type="text" id="servingBreakfast" value="7:30 AM - 9:30 AM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Lunch Config -->
+          <div class="bg-slate-950/60 border border-slate-800 p-5 rounded-xl space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">🍛</span>
+                <div>
+                  <h4 class="text-sm font-bold text-white">Lunch Alert</h4>
+                  <p class="text-[11px] text-slate-400">Afternoon notification</p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="enableLunch" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Send Time (24h)</label>
+                <input type="time" id="timeLunch" value="12:30" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Serving Hours</label>
+                <input type="text" id="servingLunch" value="12:30 PM - 2:30 PM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Snacks Config -->
+          <div class="bg-slate-950/60 border border-slate-800 p-5 rounded-xl space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">☕</span>
+                <div>
+                  <h4 class="text-sm font-bold text-white">Snacks / Hi-Tea Alert</h4>
+                  <p class="text-[11px] text-slate-400">Evening refreshment</p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="enableSnacks" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Send Time (24h)</label>
+                <input type="time" id="timeSnacks" value="17:00" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Serving Hours</label>
+                <input type="text" id="servingSnacks" value="5:00 PM - 6:30 PM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Dinner Config -->
+          <div class="bg-slate-950/60 border border-slate-800 p-5 rounded-xl space-y-4">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-2xl">🍲</span>
+                <div>
+                  <h4 class="text-sm font-bold text-white">Dinner Alert</h4>
+                  <p class="text-[11px] text-slate-400">Night meal</p>
+                </div>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="enableDinner" class="sr-only peer" checked>
+                <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              </label>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Send Time (24h)</label>
+                <input type="time" id="timeDinner" value="19:45" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+              <div>
+                <label class="block text-[11px] font-semibold text-slate-400 mb-1">Serving Hours</label>
+                <input type="text" id="servingDinner" value="7:45 PM - 9:45 PM" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Mess Name Config -->
+        <div class="pt-6 mt-6 border-t border-slate-800 max-w-md">
+          <label class="block text-xs font-semibold text-slate-300 mb-1">Mess / Hostel Name</label>
+          <input type="text" id="inputMessName" value="Hostel Mess" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
+          <p class="text-[11px] text-slate-500 mt-1">This will appear in the message title: e.g. "🍽️ Hostel Mess • LUNCH 🍽️"</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Message Template & Preview -->
+    <div id="templateTab" class="tab-content hidden space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
+        <!-- Template Editor -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+          <div>
+            <h3 class="text-base font-bold text-white mb-1 flex items-center gap-2">
+              <i class="fa-solid fa-code text-emerald-400"></i> Notification Message Template
+            </h3>
+            <p class="text-xs text-slate-400">Customise how the message appears in the WhatsApp group. Available variables:</p>
+            <div class="flex flex-wrap gap-1.5 mt-2">
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] cursor-pointer hover:bg-slate-700" onclick="insertVar('{messName}')">{messName}</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] cursor-pointer hover:bg-slate-700" onclick="insertVar('{mealUpper}')">{mealUpper}</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] cursor-pointer hover:bg-slate-700" onclick="insertVar('{day}')">{day}</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] cursor-pointer hover:bg-slate-700" onclick="insertVar('{date}')">{date}</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] cursor-pointer hover:bg-slate-700" onclick="insertVar('{itemsList}')">{itemsList}</span>
+              <span class="px-2 py-0.5 rounded bg-slate-800 text-slate-300 font-mono text-[10px] cursor-pointer hover:bg-slate-700" onclick="insertVar('{servingTime}')">{servingTime}</span>
+            </div>
+          </div>
+
+          <textarea id="templateTextarea" rows="10" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-emerald-500 leading-relaxed"></textarea>
+
+          <div class="flex justify-between items-center">
+            <button onclick="resetDefaultTemplate()" class="text-xs text-slate-400 hover:text-slate-200 underline">Reset to Default</button>
+            <button onclick="saveTemplate()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-2 shadow-lg shadow-emerald-600/20 transition">
+              <i class="fa-solid fa-floppy-disk"></i> Save Template
+            </button>
+          </div>
+        </div>
+
+        <!-- Live WhatsApp Chat Mockup -->
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-brands fa-whatsapp text-emerald-400 text-lg"></i> Live WhatsApp Preview
+            </h3>
+            <div class="flex gap-2">
+              <button onclick="loadMealPreview('breakfast')" class="px-2.5 py-1 text-[11px] rounded bg-slate-800 text-slate-300 hover:bg-slate-700">Breakfast</button>
+              <button onclick="loadMealPreview('lunch')" class="px-2.5 py-1 text-[11px] rounded bg-emerald-600/30 text-emerald-300 hover:bg-emerald-600">Lunch</button>
+              <button onclick="loadMealPreview('snacks')" class="px-2.5 py-1 text-[11px] rounded bg-slate-800 text-slate-300 hover:bg-slate-700">Snacks</button>
+              <button onclick="loadMealPreview('dinner')" class="px-2.5 py-1 text-[11px] rounded bg-slate-800 text-slate-300 hover:bg-slate-700">Dinner</button>
+            </div>
+          </div>
+
+          <!-- WhatsApp Chat Window Simulation -->
+          <div class="flex-1 rounded-xl bg-[#0b141a] p-4 flex flex-col justify-end border border-slate-800 bg-[radial-gradient(#1e293b_1px,transparent_1px)] [background-size:16px_16px]">
+            <div class="max-w-[85%] self-end bg-[#005c4b] text-white p-3.5 rounded-2xl rounded-tr-none shadow-md space-y-1 text-xs">
+              <p id="livePreviewContent" class="whitespace-pre-wrap leading-relaxed select-none">Loading preview...</p>
+              <div class="text-[10px] text-emerald-200/70 text-right flex items-center justify-end gap-1 mt-1">
+                <span>12:30 PM</span>
+                <i class="fa-solid fa-check-double text-sky-400"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- TAB 4: Delivery History / Logs -->
+    <div id="logsTab" class="tab-content hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-base font-bold text-white flex items-center gap-2">
+              <i class="fa-solid fa-clock-rotate-left text-emerald-400"></i> WhatsApp Broadcast Logs
+            </h3>
+            <p class="text-xs text-slate-400">Recent automatic and manual notifications sent to WhatsApp.</p>
+          </div>
+          <button onclick="loadLogs()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-lg flex items-center gap-1.5 transition">
+            <i class="fa-solid fa-arrows-rotate"></i> Refresh
+          </button>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="border-b border-slate-800 bg-slate-950/60 text-slate-300 font-semibold">
+                <th class="py-2.5 px-3">Time</th>
+                <th class="py-2.5 px-3">Meal</th>
+                <th class="py-2.5 px-3">Type</th>
+                <th class="py-2.5 px-3">Target Group</th>
+                <th class="py-2.5 px-3">Status</th>
+                <th class="py-2.5 px-3">Message Preview / Details</th>
+              </tr>
+            </thead>
+            <tbody id="logsTableBody" class="divide-y divide-slate-800/60 font-normal">
+              <tr>
+                <td colspan="6" class="py-6 text-center text-slate-500">No logs yet. Messages sent will appear here.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: 24/7 Cloud Hosting Guide (Laptop & Phone Off) -->
+    <div id="cloudTab" class="tab-content hidden space-y-6">
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-6">
+        <div>
+          <span class="px-2.5 py-1 rounded-md bg-sky-500/10 text-sky-400 border border-sky-500/20 text-[11px] font-semibold uppercase tracking-wider">Zero Hardware Dependency</span>
+          <h3 class="text-xl font-bold text-white mt-2 flex items-center gap-2">
+            How to run 24/7 when your Laptop and Phone are switched OFF
+          </h3>
+          <p class="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
+            By default, running on your laptop stops when the laptop shuts down. To have this run completely autonomously in the background 365 days a year without needing your computer on, deploy this app to a <strong>Free 24/7 Cloud Host</strong>.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <!-- Point 1: The Phone -->
+          <div class="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-mobile-screen-button"></i>
+            </div>
+            <h4 class="text-sm font-bold text-white">1. Does your phone need to stay ON?</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              <strong class="text-emerald-400">NO!</strong> Because WhatsApp uses the modern <em>Multi-Device</em> protocol, once you scan the QR code to link the bot, WhatsApp grants an independent secure session. Your phone can be out of battery, switched off, or disconnected from the internet, and WhatsApp will still deliver the messages from the server.
+            </p>
+          </div>
+
+          <!-- Point 2: The Laptop -->
+          <div class="bg-slate-950/60 border border-slate-800 p-5 rounded-2xl space-y-3">
+            <div class="w-10 h-10 rounded-xl bg-sky-500/10 text-sky-400 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-cloud"></i>
+            </div>
+            <h4 class="text-sm font-bold text-white">2. Does your laptop need to stay ON?</h4>
+            <p class="text-xs text-slate-400 leading-relaxed">
+              <strong class="text-sky-400">Not if you host it in the Cloud!</strong> We have pre-configured this app with a <code>Dockerfile</code> and <code>render.yaml</code> so you can deploy it to <strong>Render.com</strong> or <strong>Railway.app</strong> in 3 minutes for free. The cloud server stays alive 24/7 in a data center.
+            </p>
+          </div>
+        </div>
+
+        <!-- 3-Step Deployment Guide -->
+        <div class="bg-slate-950/80 border border-slate-800 p-6 rounded-2xl space-y-4">
+          <h4 class="text-sm font-bold text-white flex items-center gap-2">
+            <i class="fa-solid fa-rocket text-amber-400"></i> 3-Minute Free Cloud Deployment (Render.com)
+          </h4>
+          
+          <div class="space-y-3 text-xs text-slate-300">
+            <div class="flex items-start gap-3">
+              <span class="w-6 h-6 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center shrink-0 font-bold">1</span>
+              <div>
+                <strong class="text-white">Push this project to a free GitHub repository</strong>
+                <p class="text-slate-400 mt-0.5">Initialize git and push the files in this folder to your GitHub account (public or private).</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <span class="w-6 h-6 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center shrink-0 font-bold">2</span>
+              <div>
+                <strong class="text-white">Sign up on Render.com & click "New Web Service"</strong>
+                <p class="text-slate-400 mt-0.5">Select your GitHub repository. Build Command: <code class="text-emerald-400 font-mono">npm install</code>, Start Command: <code class="text-emerald-400 font-mono">node server.js</code>.</p>
+              </div>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <span class="w-6 h-6 rounded-full bg-slate-800 text-emerald-400 flex items-center justify-center shrink-0 font-bold">3</span>
+              <div>
+                <strong class="text-white">Open your live URL (e.g. https://my-mess-bot.onrender.com)</strong>
+                <p class="text-slate-400 mt-0.5">Scan the QR code once with your phone, select your WhatsApp group, and drop your monthly Excel sheet. It will send notifications every day automatically, even when your phone and laptop are off!</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

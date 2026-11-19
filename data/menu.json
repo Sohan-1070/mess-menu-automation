@@ -1,0 +1,47 @@
+{
+  "weekly": {
+    "Monday": {
+      "breakfast": "Poha with Sev & Fried Peanuts, Boiled Sprouts, Banana, Bread Butter & Jam, Tea / Coffee",
+      "lunch": "Rajma Masala, Steamed Jeera Rice, Phulka Roti, Aloo Gobi Dry, Cucumber Curd Salad, Papad",
+      "snacks": "Veg Cutlet with Green Mint Chutney, Hot Masala Tea / Milk",
+      "dinner": "Paneer Butter Masala, Dal Makhani, Tawa Roti, Veg Pulao, Gulab Jamun"
+    },
+    "Tuesday": {
+      "breakfast": "Idli & Vada with Coconut Chutney & Sambhar, Bread Omelette (or Boiled Egg), Tea / Coffee",
+      "lunch": "Kadhi Pakoda, Moong Dal Khichdi / Steamed Rice, Tawa Roti, Bhindi Masala, Pickle & Fryums",
+      "snacks": "Sweet Corn Chaat / Roasted Peanuts, Hot Ginger Tea / Coffee",
+      "dinner": "Egg Curry / Malai Kofta, Mix Veg Dal Fry, Steamed Rice, Butter Roti, Ice Cream"
+    },
+    "Wednesday": {
+      "breakfast": "Aloo Paratha with Curd & Pickle, Boiled Egg / Sprout Salad, Tea / Coffee",
+      "lunch": "Chole Bhature / Chole Rice, Boondi Raita, Onion Mint Salad, Lemon Pickle",
+      "snacks": "Samosa with Tamarind Chutney, Masala Chai",
+      "dinner": "Chicken Curry / Shahi Paneer, Dal Tadka, Jeera Rice, Tandoori Roti, Kheer"
+    },
+    "Thursday": {
+      "breakfast": "Uttapam / Dosa with Sambar & Tomato Chutney, Boiled Egg / Fruit, Tea / Coffee",
+      "lunch": "Kashmiri Dum Aloo, Yellow Arhar Dal Tadka, Steamed Rice, Phulka Roti, Salad & Papad",
+      "snacks": "Pav Bhaji (2 pcs) with Chopped Onions & Lemon, Tea / Coffee",
+      "dinner": "Veg Kolhapuri, Masoor Dal, Steamed Rice, Butter Roti, Fruit Custard"
+    },
+    "Friday": {
+      "breakfast": "Methi Thepla / Puri Bhaji, Pickles & Curd, Banana, Tea / Coffee",
+      "lunch": "Dal Makhani, Veg Jalfrezi, Steamed Rice, Phulka Roti, Kachumber Salad, Papad",
+      "snacks": "Bhel Puri / Sev Puri, Hot Cardamom Tea",
+      "dinner": "Butter Chicken / Kadai Paneer, Veg Biryani with Mirchi ka Salan, Naan / Roti, Rasgulla"
+    },
+    "Saturday": {
+      "breakfast": "Rava Upma with Coconut Chutney, Boiled Egg / Sprouts, Bread Toast, Tea / Coffee",
+      "lunch": "Lauki Chana Dal, Aloo Baingan Masala, Steamed Rice, Tawa Roti, Dahi Vada, Salad",
+      "snacks": "Bread Pakoda with Green Chutney, Hot Masala Chai",
+      "dinner": "Matar Mushroom / Soya Chaap Curry, Dal Tadka, Veg Pulao, Phulka Roti, Moong Dal Halwa"
+    },
+    "Sunday": {
+      "breakfast": "Masala Dosa with Sambar & Chutney, Boiled Egg / Cut Fruits, Tea / Coffee",
+      "lunch": "Special Hyderabadi Dum Biryani (Chicken / Veg), Veg Salan, Burani Raita, Papad, Sweet Paan",
+      "snacks": "Maggi Noodles / White Sauce Pasta, Cold Coffee",
+      "dinner": "Palak Paneer, Dal Fry, Jeera Rice, Missi Roti & Tawa Roti, Brownie with Chocolate Syrup"
+    }
+  },
+  "specialDates": {}
+}
