@@ -22,7 +22,18 @@ if (!fs.existsSync(path.join(__dirname, 'uploads'))) {
 
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+
+// Disable caching for frontend updates so browser always sees latest UI immediately
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  next();
+});
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: false,
+  maxAge: 0
+}));
 
 // WebSocket Broadcast Helper
 function broadcast(type, payload) {

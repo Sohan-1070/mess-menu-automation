@@ -247,7 +247,18 @@ function renderModalGroupList(groups) {
   if (!list) return;
 
   if (!groups || groups.length === 0) {
-    list.innerHTML = '<p class="text-center text-slate-500 py-8 text-xs">No WhatsApp groups found. Try clicking Refresh.</p>';
+    list.innerHTML = `
+      <div class="text-center py-8 px-4 space-y-3">
+        <div class="w-12 h-12 mx-auto rounded-full bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-xl">
+          <i class="fa-brands fa-whatsapp"></i>
+        </div>
+        <p class="text-slate-200 font-semibold text-xs">No WhatsApp groups loaded yet</p>
+        <p class="text-slate-400 text-[11px] max-w-xs mx-auto">Make sure WhatsApp is connected on the dashboard. Once linked, your WhatsApp groups will appear here.</p>
+        <button type="button" onclick="loadGroups()" class="px-3.5 py-1.5 bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg text-xs font-semibold inline-flex items-center gap-1.5 transition">
+          <i class="fa-solid fa-arrows-rotate"></i> Refresh Groups Now
+        </button>
+      </div>
+    `;
     updateModalSelectionCount();
     return;
   }
@@ -369,46 +380,55 @@ function removeTargetGroup(id) {
 function updateTargetGroupsDisplay() {
   const header = document.getElementById('targetGroupNameHeader');
   const badge = document.getElementById('selectedCountBadge');
+  const heroBadge = document.getElementById('heroTargetCountBadge');
   const btnText = document.getElementById('openModalBtnText');
   const pillsContainer = document.getElementById('selectedGroupsPills');
+  const tab2Pills = document.getElementById('tab2GroupsPills');
 
   const groups = state.settings?.targetGroups || [];
 
   if (Array.isArray(groups) && groups.length > 0) {
     const count = groups.length;
     if (badge) badge.textContent = `${count} selected`;
+    if (heroBadge) heroBadge.textContent = `${count} selected`;
     if (btnText) btnText.textContent = `${count} Group${count > 1 ? 's' : ''} Selected`;
     if (header) {
       header.textContent = count === 1 ? groups[0].name : `${count} Groups (${groups[0].name}, +${count - 1} more)`;
     }
 
-    if (pillsContainer) {
-      pillsContainer.innerHTML = groups.map(g => `
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium shadow-sm">
-          <i class="fa-solid fa-users text-[10px] text-emerald-400"></i>
-          <span class="truncate max-w-[140px]">${g.name}</span>
-          <button type="button" onclick="removeTargetGroup('${g.id}')" title="Remove" class="text-slate-400 hover:text-white ml-0.5">&times;</button>
-        </span>
-      `).join('');
-    }
+    const pillsHtml = groups.map(g => `
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium shadow-sm">
+        <i class="fa-solid fa-users text-[10px] text-emerald-400"></i>
+        <span class="truncate max-w-[140px]">${g.name}</span>
+        <button type="button" onclick="removeTargetGroup('${g.id}')" title="Remove" class="text-slate-400 hover:text-white ml-0.5">&times;</button>
+      </span>
+    `).join('');
+
+    if (pillsContainer) pillsContainer.innerHTML = pillsHtml;
+    if (tab2Pills) tab2Pills.innerHTML = pillsHtml;
   } else if (state.settings?.targetGroupName && state.settings.targetGroupName !== 'Not Selected') {
     if (badge) badge.textContent = '1 selected';
+    if (heroBadge) heroBadge.textContent = '1 selected';
     if (btnText) btnText.textContent = '1 Group Selected';
     if (header) header.textContent = state.settings.targetGroupName;
-    if (pillsContainer) {
-      pillsContainer.innerHTML = `
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium">
-          <i class="fa-solid fa-users text-[10px] text-emerald-400"></i>
-          <span class="truncate max-w-[140px]">${state.settings.targetGroupName}</span>
-        </span>
-      `;
-    }
+    const singleHtml = `
+      <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium">
+        <i class="fa-solid fa-users text-[10px] text-emerald-400"></i>
+        <span class="truncate max-w-[140px]">${state.settings.targetGroupName}</span>
+      </span>
+    `;
+    if (pillsContainer) pillsContainer.innerHTML = singleHtml;
+    if (tab2Pills) tab2Pills.innerHTML = singleHtml;
   } else {
     if (badge) badge.textContent = '0 selected';
+    if (heroBadge) heroBadge.textContent = 'Select Groups';
     if (btnText) btnText.textContent = 'Select Target Groups';
     if (header) header.textContent = 'None Selected';
     if (pillsContainer) {
-      pillsContainer.innerHTML = '<span class="text-[11px] text-slate-500 italic">No groups selected. Click the button above to choose groups.</span>';
+      pillsContainer.innerHTML = '<span class="text-[11px] text-slate-500 italic">No groups selected yet. Click button above to choose groups.</span>';
+    }
+    if (tab2Pills) {
+      tab2Pills.innerHTML = '<span class="text-[11px] text-slate-500 italic">No groups selected yet. Click button above to choose groups.</span>';
     }
   }
 }

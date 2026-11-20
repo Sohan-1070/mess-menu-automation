@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
   <title>MessMate • WhatsApp Mess Menu Automation</title>
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -63,14 +66,16 @@
       <div class="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden flex flex-col justify-between">
         <div class="absolute -right-16 -top-16 w-56 h-56 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none"></div>
         <div>
-          <div class="flex items-center justify-between mb-4">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
             <div class="flex items-center gap-2">
               <span class="px-2.5 py-1 rounded-md bg-slate-800 text-slate-300 text-xs font-semibold uppercase tracking-wider" id="todayDayBadge">Today</span>
               <span class="text-sm font-medium text-slate-400" id="todayDateStr">20 November 2026</span>
             </div>
-            <div class="text-xs text-slate-400 flex items-center gap-1.5">
-              <i class="fa-solid fa-users text-emerald-400"></i> Target: <strong class="text-slate-200" id="targetGroupNameHeader">None Selected</strong>
-            </div>
+            <button type="button" onclick="openGroupModal()" class="flex items-center gap-2 bg-slate-800/90 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/50 px-3 py-1.5 rounded-xl text-xs font-semibold text-slate-200 hover:text-white transition group shadow-sm cursor-pointer" title="Click to choose target WhatsApp groups">
+              <i class="fa-solid fa-users text-emerald-400 group-hover:scale-110 transition-transform"></i>
+              <span>Target: <strong class="text-emerald-400" id="targetGroupNameHeader">None Selected</strong></span>
+              <span id="heroTargetCountBadge" class="bg-emerald-500/20 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full border border-emerald-500/30 font-bold">Select Groups</span>
+            </button>
           </div>
 
           <h2 class="text-2xl font-bold text-white mb-2">Today's Mess Schedule</h2>
@@ -174,31 +179,31 @@
                 <i class="fa-solid fa-power-off"></i>
               </button>
             </div>
+          </div>
 
-            <!-- Multiple Target Groups Card Display -->
-            <div class="space-y-3 pt-1">
-              <div class="flex items-center justify-between">
-                <label class="block text-xs font-semibold text-slate-300">
-                  <i class="fa-solid fa-users text-emerald-400 mr-1"></i> Target WhatsApp Groups
-                </label>
-                <button onclick="loadGroups()" title="Refresh groups from WhatsApp" class="text-slate-400 hover:text-white text-[11px] flex items-center gap-1 transition">
-                  <i class="fa-solid fa-arrows-rotate"></i> Refresh
-                </button>
-              </div>
-
-              <!-- Dedicated Button to Select Multiple Groups -->
-              <button type="button" onclick="openGroupModal()" class="w-full py-2.5 px-3 bg-slate-800/90 hover:bg-slate-700 border border-slate-700 hover:border-emerald-500/50 rounded-xl text-xs font-semibold text-white flex items-center justify-between transition group shadow-md cursor-pointer">
-                <span class="flex items-center gap-2">
-                  <i class="fa-solid fa-layer-group text-emerald-400 group-hover:scale-110 transition-transform"></i>
-                  <span id="openModalBtnText">Select Target Groups</span>
-                </span>
-                <span id="selectedCountBadge" class="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold border border-emerald-500/30">0 selected</span>
+          <!-- Multiple Target Groups Card Display (ALWAYS VISIBLE) -->
+          <div class="space-y-3 pt-3 border-t border-slate-800">
+            <div class="flex items-center justify-between">
+              <label class="block text-xs font-semibold text-slate-300">
+                <i class="fa-solid fa-users text-emerald-400 mr-1"></i> Target WhatsApp Groups
+              </label>
+              <button onclick="loadGroups()" title="Refresh groups from WhatsApp" class="text-slate-400 hover:text-white text-[11px] flex items-center gap-1 transition">
+                <i class="fa-solid fa-arrows-rotate"></i> Refresh
               </button>
+            </div>
 
-              <!-- Currently Active Groups Badges -->
-              <div id="selectedGroupsPills" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
-                <span class="text-[11px] text-slate-500 italic">No groups selected yet. Click button above to choose groups.</span>
-              </div>
+            <!-- Dedicated Button to Select Multiple Groups -->
+            <button type="button" onclick="openGroupModal()" class="w-full py-2.5 px-3 bg-emerald-600/15 hover:bg-emerald-600/25 border border-emerald-500/40 rounded-xl text-xs font-semibold text-emerald-300 hover:text-white flex items-center justify-between transition group shadow-md cursor-pointer">
+              <span class="flex items-center gap-2">
+                <i class="fa-solid fa-layer-group text-emerald-400 group-hover:scale-110 transition-transform"></i>
+                <span id="openModalBtnText">Select Target Groups</span>
+              </span>
+              <span id="selectedCountBadge" class="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full text-[10px] font-bold border border-emerald-500/30">0 selected</span>
+            </button>
+
+            <!-- Currently Active Groups Badges -->
+            <div id="selectedGroupsPills" class="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto">
+              <span class="text-[11px] text-slate-500 italic">No groups selected yet. Click button above to choose groups.</span>
             </div>
           </div>
         </div>
@@ -452,6 +457,24 @@
           <input type="text" id="inputMessName" value="Hostel Mess" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500" />
           <p class="text-[11px] text-slate-500 mt-1">This will appear in the message title: e.g. "🍽️ Hostel Mess • LUNCH 🍽️"</p>
         </div>
+
+        <!-- Target WhatsApp Groups in Schedule Tab -->
+        <div class="pt-6 mt-6 border-t border-slate-800">
+          <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+            <div>
+              <h4 class="text-xs font-bold text-white flex items-center gap-1.5">
+                <i class="fa-solid fa-users text-emerald-400"></i> Broadcast Target Groups
+              </h4>
+              <p class="text-[11px] text-slate-400">Meal messages will be sent to all checked WhatsApp groups at the scheduled times.</p>
+            </div>
+            <button type="button" onclick="openGroupModal()" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition shadow cursor-pointer">
+              <i class="fa-solid fa-layer-group"></i> Select Target Groups
+            </button>
+          </div>
+          <div id="tab2GroupsPills" class="flex flex-wrap gap-1.5 pt-1">
+            <span class="text-[11px] text-slate-500 italic">No groups selected yet. Click button above to choose groups.</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -678,6 +701,6 @@
     </div>
   </div>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=3.0"></script>
 </body>
 </html>
