@@ -440,18 +440,19 @@ function setupDropZone() {
 }
 
 async function handleAutoUpload(file) {
-  const validExts = ['.xlsx', '.xls', '.csv'];
+  const validExts = ['.xlsx', '.xls', '.csv', '.pdf'];
   const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
 
   if (!validExts.includes(ext)) {
-    showToast('Please drop a valid Excel file (.xlsx, .xls) or .csv!', 'error');
+    showToast('Please drop a valid menu file (.pdf, .xlsx, .xls, or .csv)!', 'error');
     return;
   }
 
   const formData = new FormData();
   formData.append('menuFile', file);
 
-  showToast(`⚡ Importing "${file.name}" automatically...`, 'info');
+  const isPdf = ext === '.pdf';
+  showToast(`⚡ Extracting & importing "${file.name}" ${isPdf ? '(PDF Text)' : ''}...`, 'info');
 
   try {
     const res = await fetch('/api/upload-menu', {

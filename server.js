@@ -9,6 +9,7 @@ const fs = require('fs');
 
 const whatsapp = require('./whatsapp');
 const scheduler = require('./scheduler');
+const { extractTextFromPdf, parseMenuFromText } = require('./pdfParser');
 
 const app = express();
 const server = http.createServer(app);
@@ -95,96 +96,125 @@ app.post('/api/menu', (req, res) => {
   }
 });
 
-// 4. Excel / CSV Menu Upload
-app.post('/api/upload-menu', upload.single('menuFile'), (req, res) => {
+// 4. Excel / CSV / PDF Menu Upload
+app.post('/api/upload-menu', upload.single('menuFile'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: 'No file uploaded!' });
   }
 
   const filePath = req.file.path;
+  const originalName = req.file.originalname.toLowerCase();
+  const isPdf = originalName.endsWith('.pdf') || req.file.mimetype === 'application/pdf';
+
   try {
-    const workbook = xlsx.readFile(filePath);
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
-    const rawRows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
-
-    if (!rawRows || rawRows.length === 0) {
-      throw new Error('The uploaded spreadsheet is empty!');
-    }
-
     const currentMenu = scheduler.getMenu();
-    const daysMap = {
-      mon: 'Monday',
-      tue: 'Tuesday',
-      wed: 'Wednesday',
-      thu: 'Thursday',
-      fri: 'Friday',
-      sat: 'Saturday',
-      sun: 'Sunday'
-    };
-
     let updatedCount = 0;
 
-    rawRows.forEach(row => {
-      // Find Day column
-      let dayVal = '';
-      let breakfastVal = '';
-      let lunchVal = '';
-      let snacksVal = '';
-      let dinnerVal = '';
+    if (isPdf) {
+      // PDF Processing
+      console.log(`[Upload] Processing PDF menu: ${req.file.originalname}`);
+      const extractedText = await extractTextFromPdf(filePath);
+      
+      if (!extractedText || extractedText.trim().length === 0) {
+        throw new Error('Could not extract text from this PDF. Please ensure it is a digital text PDF (not a flat image or scanned photo).');
+      }
 
-      Object.keys(row).forEach(key => {
-        const cleanKey = key.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-        const val = String(row[key]).trim();
+      const parsedWeekly = parseMenuFromText(extractedText);
+      const parsedDays = Object.keys(parsedWeekly);
 
-        if (cleanKey.includes('day') || cleanKey === 'dayofweek') {
-          dayVal = val;
-        } else if (cleanKey.includes('break') || cleanKey.includes('bfast') || cleanKey === 'bf') {
-          breakfastVal = val;
-        } else if (cleanKey.includes('lunch') || cleanKey.includes('afternoon')) {
-          lunchVal = val;
-        } else if (cleanKey.includes('snack') || cleanKey.includes('tea') || cleanKey.includes('hitea') || cleanKey.includes('refreshment')) {
-          snacksVal = val;
-        } else if (cleanKey.includes('dinner') || cleanKey.includes('night') || cleanKey.includes('supper')) {
-          dinnerVal = val;
+      if (parsedDays.length === 0) {
+        throw new Error('Could not automatically identify day or meal sections in this PDF. Please verify the PDF contains meal names (Breakfast, Lunch, Dinner) or use the Excel template.');
+      }
+
+      parsedDays.forEach(day => {
+        if (!currentMenu.weekly[day]) currentMenu.weekly[day] = {};
+        if (parsedWeekly[day].breakfast) currentMenu.weekly[day].breakfast = parsedWeekly[day].breakfast;
+        if (parsedWeekly[day].lunch) currentMenu.weekly[day].lunch = parsedWeekly[day].lunch;
+        if (parsedWeekly[day].snacks) currentMenu.weekly[day].snacks = parsedWeekly[day].snacks;
+        if (parsedWeekly[day].dinner) currentMenu.weekly[day].dinner = parsedWeekly[day].dinner;
+        updatedCount++;
+      });
+    } else {
+      // Excel / CSV Processing
+      const workbook = xlsx.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rawRows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+
+      if (!rawRows || rawRows.length === 0) {
+        throw new Error('The uploaded spreadsheet is empty!');
+      }
+
+      const daysMap = {
+        mon: 'Monday',
+        tue: 'Tuesday',
+        wed: 'Wednesday',
+        thu: 'Thursday',
+        fri: 'Friday',
+        sat: 'Saturday',
+        sun: 'Sunday'
+      };
+
+      rawRows.forEach(row => {
+        let dayVal = '';
+        let breakfastVal = '';
+        let lunchVal = '';
+        let snacksVal = '';
+        let dinnerVal = '';
+
+        Object.keys(row).forEach(key => {
+          const cleanKey = key.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+          const val = String(row[key]).trim();
+
+          if (cleanKey.includes('day') || cleanKey === 'dayofweek') {
+            dayVal = val;
+          } else if (cleanKey.includes('break') || cleanKey.includes('bfast') || cleanKey === 'bf') {
+            breakfastVal = val;
+          } else if (cleanKey.includes('lunch') || cleanKey.includes('afternoon')) {
+            lunchVal = val;
+          } else if (cleanKey.includes('snack') || cleanKey.includes('tea') || cleanKey.includes('hitea') || cleanKey.includes('refreshment')) {
+            snacksVal = val;
+          } else if (cleanKey.includes('dinner') || cleanKey.includes('night') || cleanKey.includes('supper')) {
+            dinnerVal = val;
+          }
+        });
+
+        if (dayVal) {
+          const lowerDay = dayVal.toLowerCase();
+          let matchedDay = null;
+          for (const [prefix, full] of Object.entries(daysMap)) {
+            if (lowerDay.includes(prefix)) {
+              matchedDay = full;
+              break;
+            }
+          }
+
+          if (matchedDay) {
+            if (!currentMenu.weekly[matchedDay]) {
+              currentMenu.weekly[matchedDay] = {};
+            }
+            if (breakfastVal) currentMenu.weekly[matchedDay].breakfast = breakfastVal;
+            if (lunchVal) currentMenu.weekly[matchedDay].lunch = lunchVal;
+            if (snacksVal) currentMenu.weekly[matchedDay].snacks = snacksVal;
+            if (dinnerVal) currentMenu.weekly[matchedDay].dinner = dinnerVal;
+            updatedCount++;
+          }
         }
       });
-
-      if (dayVal) {
-        const lowerDay = dayVal.toLowerCase();
-        let matchedDay = null;
-        for (const [prefix, full] of Object.entries(daysMap)) {
-          if (lowerDay.includes(prefix)) {
-            matchedDay = full;
-            break;
-          }
-        }
-
-        if (matchedDay) {
-          if (!currentMenu.weekly[matchedDay]) {
-            currentMenu.weekly[matchedDay] = {};
-          }
-          if (breakfastVal) currentMenu.weekly[matchedDay].breakfast = breakfastVal;
-          if (lunchVal) currentMenu.weekly[matchedDay].lunch = lunchVal;
-          if (snacksVal) currentMenu.weekly[matchedDay].snacks = snacksVal;
-          if (dinnerVal) currentMenu.weekly[matchedDay].dinner = dinnerVal;
-          updatedCount++;
-        }
-      }
-    });
+    }
 
     if (updatedCount === 0) {
-      throw new Error('Could not identify day columns. Please ensure columns include: Day, Breakfast, Lunch, Snacks, Dinner.');
+      throw new Error('Could not identify day columns. Please ensure meals include days (Mon-Sun) and meals (Breakfast, Lunch, Snacks, Dinner).');
     }
 
     fs.writeFileSync(scheduler.menuFile, JSON.stringify(currentMenu, null, 2), 'utf8');
 
     // Clean up uploaded temp file
-    fs.unlinkSync(filePath);
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
 
     res.json({
       success: true,
-      message: `Successfully imported menu for ${updatedCount} days!`,
+      message: `Successfully imported menu for ${updatedCount} days from ${isPdf ? 'PDF' : 'Spreadsheet'}!`,
       menu: currentMenu
     });
   } catch (err) {
