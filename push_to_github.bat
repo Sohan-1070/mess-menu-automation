@@ -1,25 +1,37 @@
 @echo off
-title Push MessMate to GitHub
-echo ================================================================
-echo           Push MessMate to GitHub (Sohan-1070)
-echo ================================================================
+color 0A
+title Push Updates to GitHub - MessMate
+echo =================================================================
+echo             PUSHING ALL UPDATES TO GITHUB
+echo =================================================================
 echo.
-echo Make sure you have created the empty repository on GitHub:
-echo https://github.com/new?name=mess-menu-automation
+cd /d "%~dp0"
+
+echo [1/3] Staging all files...
+git add .
+
+echo [2/3] Checking for uncommitted changes...
+git commit -m "Update MessMate features and fixes" >nul 2>&1
+
+echo [3/3] Pushing to GitHub (https://github.com/Sohan-1070/mess-menu-automation)...
 echo.
-echo Pushing local branch 'main' to origin...
-git push -u origin main
+git push origin main
 
 if %ERRORLEVEL% equ 0 (
     echo.
-    echo ================================================================
-    echo SUCCESS! Repository pushed to:
-    echo https://github.com/Sohan-1070/mess-menu-automation
-    echo ================================================================
+    echo =================================================================
+    echo  [SUCCESS] All updates pushed to GitHub!
+    echo  Render will now automatically redeploy your live website.
+    echo =================================================================
 ) else (
     echo.
-    echo If push failed, make sure the repository is created on github.com
-    echo and you are signed in.
+    color 0C
+    echo =================================================================
+    echo  [ERROR] Push failed. Please check your internet connection or
+    echo  sign in to GitHub if prompted.
+    echo =================================================================
 )
 
-pause
+echo.
+echo Press any key to exit.
+pause >nul
