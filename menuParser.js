@@ -97,6 +97,18 @@ function parseDaysAsColumns(grid) {
       mealKey = 'dinner';
     }
 
+    // Check if any of the header cells have a timing range (e.g. "7:30 - 9:30" or "4:30 - 6:00")
+    if (mealKey) {
+      for (let c = 0; c < Math.min(row.length, 4); c++) {
+        const cellStr = String(row[c] || '').trim();
+        if (/\d{1,2}[:.]\d{2}\s*(?:am|pm)?\s*[-–—to]+\s*\d{1,2}[:.]\d{2}\s*(?:am|pm)?/i.test(cellStr)) {
+          weekly._servingTimes = weekly._servingTimes || {};
+          weekly._servingTimes[mealKey] = cellStr;
+          break;
+        }
+      }
+    }
+
     if (mealKey) {
       Object.keys(dayColMap).forEach(colIdx => {
         const day = dayColMap[colIdx];

@@ -116,12 +116,24 @@ app.post('/api/upload-menu', upload.single('menuFile'), async (req, res) => {
 
     const currentMenu = scheduler.getMenu();
     Object.keys(parsedWeekly).forEach(day => {
+      if (day.startsWith('_')) return; // ignore internal metadata like _servingTimes
       if (!currentMenu.weekly[day]) currentMenu.weekly[day] = {};
       if (parsedWeekly[day].breakfast) currentMenu.weekly[day].breakfast = parsedWeekly[day].breakfast;
       if (parsedWeekly[day].lunch) currentMenu.weekly[day].lunch = parsedWeekly[day].lunch;
       if (parsedWeekly[day].snacks) currentMenu.weekly[day].snacks = parsedWeekly[day].snacks;
       if (parsedWeekly[day].dinner) currentMenu.weekly[day].dinner = parsedWeekly[day].dinner;
     });
+
+    // Update serving times if extracted from the sheet
+    if (parsedWeekly._servingTimes) {
+      const currentSettings = scheduler.getSettings();
+      Object.keys(parsedWeekly._servingTimes).forEach(meal => {
+        if (currentSettings.timings && currentSettings.timings[meal]) {
+          currentSettings.timings[meal].servingTime = parsedWeekly._servingTimes[meal];
+        }
+      });
+      fs.writeFileSync(scheduler.settingsFile, JSON.stringify(currentSettings, null, 2), 'utf8');
+    }
 
     fs.writeFileSync(scheduler.menuFile, JSON.stringify(currentMenu, null, 2), 'utf8');
 

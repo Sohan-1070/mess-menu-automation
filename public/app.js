@@ -345,16 +345,16 @@ function applySettingsToUI(settings) {
     document.getElementById('timeBadgeLunch').innerText = timings.lunch.time || '12:30';
   }
   if (timings.snacks) {
-    document.getElementById('timeSnacks').value = timings.snacks.time || '17:00';
-    document.getElementById('servingSnacks').value = timings.snacks.servingTime || '';
+    document.getElementById('timeSnacks').value = timings.snacks.time || '16:30';
+    document.getElementById('servingSnacks').value = timings.snacks.servingTime || '4:30 PM - 6:00 PM';
     document.getElementById('enableSnacks').checked = timings.snacks.enabled !== false;
-    document.getElementById('timeBadgeSnacks').innerText = timings.snacks.time || '17:00';
+    document.getElementById('timeBadgeSnacks').innerText = timings.snacks.time || '16:30';
   }
   if (timings.dinner) {
-    document.getElementById('timeDinner').value = timings.dinner.time || '19:45';
-    document.getElementById('servingDinner').value = timings.dinner.servingTime || '';
+    document.getElementById('timeDinner').value = timings.dinner.time || '19:30';
+    document.getElementById('servingDinner').value = timings.dinner.servingTime || '7:30 PM - 9:30 PM';
     document.getElementById('enableDinner').checked = timings.dinner.enabled !== false;
-    document.getElementById('timeBadgeDinner').innerText = timings.dinner.time || '19:45';
+    document.getElementById('timeBadgeDinner').innerText = timings.dinner.time || '19:30';
   }
 }
 

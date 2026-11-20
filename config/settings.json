@@ -21,17 +21,17 @@
     },
     "snacks": {
       "enabled": true,
-      "time": "17:00",
+      "time": "16:30",
       "title": "Evening Snacks",
       "emoji": "☕",
-      "servingTime": "5:00 PM - 6:30 PM"
+      "servingTime": "4:30 PM - 6:00 PM"
     },
     "dinner": {
       "enabled": true,
-      "time": "19:45",
+      "time": "19:30",
       "title": "Dinner",
       "emoji": "🍲",
-      "servingTime": "7:45 PM - 9:45 PM"
+      "servingTime": "7:30 PM - 9:30 PM"
     }
   },
   "template": "🍽️ *{messName} • {mealUpper}* 🍽️\n📅 *{day}, {date}*\n━━━━━━━━━━━━━━━━━━━━\n{itemsList}\n━━━━━━━━━━━━━━━━━━━━\n⏰ *Serving Time:* {servingTime}\n✨ Have a wonderful meal!"
