@@ -831,7 +831,7 @@ function insertVar(varName) {
 }
 
 function resetDefaultTemplate() {
-  const def = "🍽️ *{messName} • {mealUpper}* 🍽️\n📅 *{day}, {date}*\n━━━━━━━━━━━━━━━━━━━━\n{itemsList}\n━━━━━━━━━━━━━━━━━━━━\n⏰ *Serving Time:* {servingTime}\n✨ Have a wonderful meal!";
+  const def = "🍽️ *{messName} • {mealUpper}* 🍽️\n📅 *{day}, {date}*\n━━━━━━━━━━━━━━━━━━━━\n{itemsList}\n━━━━━━━━━━━━━━━━━━━━\n✨ Have a wonderful meal!";
   document.getElementById('templateTextarea').value = def;
 }
 

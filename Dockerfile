@@ -3,6 +3,7 @@ FROM node:20-slim
 WORKDIR /app
 
 # Install dependencies
+ENV TZ="Asia/Kolkata"
 COPY package*.json ./
 RUN npm install --omit=dev
 

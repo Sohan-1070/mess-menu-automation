@@ -63,18 +63,32 @@ class SchedulerService {
     }
   }
 
-  formatMealMessage(mealKey, targetDate = new Date()) {
+  formatMealMessage(mealKey, targetDate = null) {
     const settings = this.getSettings();
     const menuData = this.getMenu();
+    const timezone = settings.timezone || 'Asia/Kolkata';
+
+    // Ensure targetDate uses the target timezone (IST)
+    let dateObj;
+    if (targetDate) {
+      dateObj = targetDate;
+    } else {
+      const nowInTz = new Date().toLocaleString('en-US', { timeZone: timezone });
+      dateObj = new Date(nowInTz);
+    }
 
     const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const dayName = days[targetDate.getDay()];
-    const dateStr = targetDate.toLocaleDateString('en-IN', {
+    const dayName = days[dateObj.getDay()];
+    const dateStr = dateObj.toLocaleDateString('en-IN', {
       day: 'numeric',
       month: 'short',
       year: 'numeric'
     });
-    const isoDate = targetDate.toISOString().split('T')[0];
+    
+    const yyyy = dateObj.getFullYear();
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const dd = String(dateObj.getDate()).padStart(2, '0');
+    const isoDate = `${yyyy}-${mm}-${dd}`;
 
     const mealConfig = settings.timings?.[mealKey] || {
       title: mealKey.charAt(0).toUpperCase() + mealKey.slice(1),
@@ -113,7 +127,13 @@ class SchedulerService {
         .join('\n');
     }
 
-    let template = settings.template || "🍽️ *{messName} • {mealUpper}* 🍽️\n📅 *{day}, {date}*\n━━━━━━━━━━━━━━━━━━━━\n{itemsList}\n━━━━━━━━━━━━━━━━━━━━\n⏰ *Serving Time:* {servingTime}\n✨ Have a wonderful meal!";
+    let template = settings.template || "🍽️ *{messName} • {mealUpper}* 🍽️\n📅 *{day}, {date}*\n━━━━━━━━━━━━━━━━━━━━\n{itemsList}\n━━━━━━━━━━━━━━━━━━━━\n✨ Have a wonderful meal!";
+
+    // Automatically strip serving time line from chat message per user preference
+    template = template
+      .replace(/\n*⏰ \*Serving Time:\* \{servingTime\}/gi, '')
+      .replace(/\n*⏰ \*Serving Time:\* [^\n]+/gi, '')
+      .replace(/{servingTime}/g, '');
 
     const message = template
       .replace(/{messName}/g, settings.messName || 'Hostel Mess')
@@ -122,8 +142,7 @@ class SchedulerService {
       .replace(/{emoji}/g, mealConfig.emoji || '🍽️')
       .replace(/{day}/g, dayName)
       .replace(/{date}/g, dateStr)
-      .replace(/{itemsList}/g, itemLines)
-      .replace(/{servingTime}/g, mealConfig.servingTime || 'As scheduled');
+      .replace(/{itemsList}/g, itemLines);
 
     return {
       message,
@@ -218,6 +237,7 @@ class SchedulerService {
     this.stopAll();
     const settings = this.getSettings();
     const timings = settings.timings || {};
+    const timezone = settings.timezone || 'Asia/Kolkata';
 
     Object.keys(timings).forEach(mealKey => {
       const cfg = timings[mealKey];
@@ -228,16 +248,19 @@ class SchedulerService {
 
       // Cron syntax: minute hour * * *
       const cronExpr = `${minutes} ${hours} * * *`;
-      console.log(`[Scheduler] Scheduling ${mealKey.toUpperCase()} at ${cfg.time} (${cronExpr})`);
+      console.log(`[Scheduler] Scheduling ${mealKey.toUpperCase()} at ${cfg.time} (${cronExpr}) in timezone ${timezone}`);
 
       try {
         const job = cron.schedule(cronExpr, async () => {
-          console.log(`[Scheduler] Cron triggered for ${mealKey} at ${new Date().toLocaleTimeString()}`);
+          console.log(`[Scheduler] Cron triggered for ${mealKey} at ${new Date().toLocaleTimeString('en-IN', { timeZone: timezone })} (${timezone})`);
           try {
             await this.sendMealNotification(mealKey, false);
           } catch (e) {
             console.error(`[Scheduler] Cron execution failed for ${mealKey}:`, e.message);
           }
+        }, {
+          scheduled: true,
+          timezone: timezone
         });
 
         this.cronJobs[mealKey] = job;
@@ -259,7 +282,11 @@ class SchedulerService {
   getNextTriggers() {
     const settings = this.getSettings();
     const timings = settings.timings || {};
-    const now = new Date();
+    const timezone = settings.timezone || 'Asia/Kolkata';
+
+    // Calculate current time in target timezone (IST)
+    const nowStr = new Date().toLocaleString('en-US', { timeZone: timezone });
+    const now = new Date(nowStr);
     const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
     const upcoming = [];
@@ -274,7 +301,7 @@ class SchedulerService {
       let triggerDate = new Date(now);
       triggerDate.setHours(h, m, 0, 0);
 
-      // If already passed today, scheduled for tomorrow
+      // If already passed today in the target timezone, scheduled for tomorrow
       if (triggerMinutes <= currentMinutes) {
         triggerDate.setDate(triggerDate.getDate() + 1);
       }
