@@ -61,7 +61,12 @@ function handleWsMessage(msg) {
       groupsCount: payload.groups?.length || 0
     });
     if (payload.groups) {
-      renderGroupChecklist(payload.groups);
+      state.groups = payload.groups;
+      const modal = document.getElementById('groupModal');
+      if (modal && !modal.classList.contains('hidden')) {
+        renderModalGroupList(payload.groups);
+      }
+      updateTargetGroupsDisplay();
     }
     showToast('WhatsApp connected successfully!', 'success');
   } else if (type === 'new_log') {
@@ -146,7 +151,11 @@ async function loadGroups() {
     const data = await res.json();
     if (data.success && data.groups) {
       state.groups = data.groups;
-      renderGroupChecklist(data.groups);
+      const modal = document.getElementById('groupModal');
+      if (modal && !modal.classList.contains('hidden')) {
+        renderModalGroupList(data.groups);
+      }
+      updateTargetGroupsDisplay();
     }
   } catch (err) {
     console.error('Failed to load groups:', err);
@@ -220,37 +229,50 @@ function getSelectedGroupIds() {
   return [];
 }
 
-function renderGroupChecklist(groups) {
-  const container = document.getElementById('groupChecklist');
-  if (!container) return;
+// Modal Handlers for Multiple Target Groups
+function openGroupModal() {
+  const modal = document.getElementById('groupModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  renderModalGroupList(state.groups || []);
+}
+
+function closeGroupModal() {
+  const modal = document.getElementById('groupModal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function renderModalGroupList(groups) {
+  const list = document.getElementById('modalGroupList');
+  if (!list) return;
 
   if (!groups || groups.length === 0) {
-    container.innerHTML = '<p class="text-slate-500 text-center py-3 text-[11px]">No WhatsApp groups found.</p>';
+    list.innerHTML = '<p class="text-center text-slate-500 py-8 text-xs">No WhatsApp groups found. Try clicking Refresh.</p>';
+    updateModalSelectionCount();
     return;
   }
 
   const selectedIds = getSelectedGroupIds();
 
-  container.innerHTML = groups.map(g => {
+  list.innerHTML = groups.map(g => {
     const isChecked = selectedIds.includes(g.id);
     return `
-      <label class="group-item flex items-center justify-between p-2 rounded-lg hover:bg-slate-900 cursor-pointer transition select-none" data-name="${g.name.toLowerCase()}">
-        <div class="flex items-center gap-2.5 overflow-hidden">
-          <input type="checkbox" value="${g.id}" data-name="${encodeURIComponent(g.name)}" ${isChecked ? 'checked' : ''} onchange="onGroupCheckboxChange()" class="group-checkbox rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-0 cursor-pointer" />
-          <span class="text-xs font-medium text-slate-200 truncate">${g.name}</span>
+      <label class="modal-group-item flex items-center justify-between p-2.5 rounded-xl hover:bg-slate-800/80 cursor-pointer transition select-none" data-name="${g.name.toLowerCase()}">
+        <div class="flex items-center gap-3 overflow-hidden">
+          <input type="checkbox" value="${g.id}" data-name="${encodeURIComponent(g.name)}" ${isChecked ? 'checked' : ''} onchange="updateModalSelectionCount()" class="modal-group-cb w-4 h-4 rounded border-slate-700 bg-slate-950 text-emerald-500 focus:ring-0 cursor-pointer" />
+          <span class="text-xs font-semibold text-slate-200 truncate">${g.name}</span>
         </div>
-        <span class="text-[10px] text-slate-500 shrink-0 font-mono ml-2">${g.participantsCount} members</span>
+        <span class="text-[10px] text-slate-400 shrink-0 font-mono bg-slate-950 px-2 py-0.5 rounded-md border border-slate-800">${g.participantsCount} members</span>
       </label>
     `;
   }).join('');
 
-  updateSelectedGroupsUI();
-  updateTargetGroupsHeader();
+  updateModalSelectionCount();
 }
 
-function filterGroupList() {
-  const query = (document.getElementById('groupSearchInput')?.value || '').toLowerCase().trim();
-  const items = document.querySelectorAll('.group-item');
+function filterModalGroups() {
+  const query = (document.getElementById('modalGroupSearch')?.value || '').toLowerCase().trim();
+  const items = document.querySelectorAll('.modal-group-item');
   items.forEach(item => {
     const name = item.getAttribute('data-name') || '';
     if (!query || name.includes(query)) {
@@ -261,61 +283,133 @@ function filterGroupList() {
   });
 }
 
-function onGroupCheckboxChange() {
-  updateSelectedGroupsUI();
+function selectAllModalGroups(selectAll) {
+  const cbs = document.querySelectorAll('.modal-group-cb');
+  cbs.forEach(cb => {
+    // Only affect visible items
+    const parent = cb.closest('.modal-group-item');
+    if (!parent || !parent.classList.contains('hidden')) {
+      cb.checked = selectAll;
+    }
+  });
+  updateModalSelectionCount();
 }
 
-function updateSelectedGroupsUI() {
-  const bar = document.getElementById('selectedGroupsBar');
-  if (!bar) return;
+function updateModalSelectionCount() {
+  const countSpan = document.getElementById('modalSelectionCount');
+  const checked = document.querySelectorAll('.modal-group-cb:checked').length;
+  if (countSpan) {
+    countSpan.textContent = `${checked} group${checked === 1 ? '' : 's'} selected`;
+  }
+}
 
-  const checkboxes = document.querySelectorAll('.group-checkbox:checked');
-  const selectedCount = checkboxes.length;
+async function saveModalGroups() {
+  const checkboxes = document.querySelectorAll('.modal-group-cb:checked');
+  const targetGroups = Array.from(checkboxes).map(cb => ({
+    id: cb.value,
+    name: decodeURIComponent(cb.getAttribute('data-name') || cb.value)
+  }));
 
-  if (selectedCount === 0) {
-    bar.innerHTML = '<span class="text-[11px] text-amber-400/80 italic">No groups selected yet. Check groups above to broadcast!</span>';
+  if (targetGroups.length === 0) {
+    showToast('Please check at least one WhatsApp group!', 'error');
     return;
   }
 
-  bar.innerHTML = `
-    <div class="w-full text-[11px] text-emerald-400 font-semibold mb-1 flex items-center justify-between">
-      <span>${selectedCount} Group${selectedCount > 1 ? 's' : ''} Selected for Broadcast</span>
-    </div>
-  ` + Array.from(checkboxes).map(cb => {
-    const id = cb.value;
-    const name = decodeURIComponent(cb.getAttribute('data-name') || id);
-    return `
-      <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 text-[10px] font-medium">
-        <span class="truncate max-w-[120px]">${name}</span>
-        <button type="button" onclick="uncheckGroup('${id}')" class="text-slate-400 hover:text-white">&times;</button>
-      </span>
-    `;
-  }).join('');
-}
+  const currentSettings = state.settings || {};
+  currentSettings.targetGroups = targetGroups;
+  currentSettings.targetGroupId = targetGroups[0].id;
+  currentSettings.targetGroupName = targetGroups.map(g => g.name).join(', ');
 
-function uncheckGroup(id) {
-  const cb = document.querySelector(`.group-checkbox[value="${id}"]`);
-  if (cb) {
-    cb.checked = false;
-    updateSelectedGroupsUI();
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(currentSettings)
+    });
+
+    const data = await res.json();
+    if (data.success) {
+      state.settings = data.settings;
+      updateTargetGroupsDisplay();
+      closeGroupModal();
+      showToast(`Saved ${targetGroups.length} target WhatsApp group(s)!`, 'success');
+    }
+  } catch (err) {
+    showToast('Failed to save groups: ' + err.message, 'error');
   }
 }
 
-function updateTargetGroupsHeader() {
+function removeTargetGroup(id) {
+  const currentGroups = state.settings?.targetGroups || [];
+  const updatedGroups = currentGroups.filter(g => g.id !== id);
+
+  if (updatedGroups.length === 0) {
+    showToast('At least one group should remain selected.', 'info');
+    return;
+  }
+
+  const currentSettings = state.settings || {};
+  currentSettings.targetGroups = updatedGroups;
+  currentSettings.targetGroupId = updatedGroups[0].id;
+  currentSettings.targetGroupName = updatedGroups.map(g => g.name).join(', ');
+
+  fetch('/api/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(currentSettings)
+  }).then(r => r.json()).then(data => {
+    if (data.success) {
+      state.settings = data.settings;
+      updateTargetGroupsDisplay();
+      showToast('Removed group.', 'info');
+    }
+  });
+}
+
+function updateTargetGroupsDisplay() {
   const header = document.getElementById('targetGroupNameHeader');
-  if (!header) return;
+  const badge = document.getElementById('selectedCountBadge');
+  const btnText = document.getElementById('openModalBtnText');
+  const pillsContainer = document.getElementById('selectedGroupsPills');
 
   const groups = state.settings?.targetGroups || [];
+
   if (Array.isArray(groups) && groups.length > 0) {
-    if (groups.length === 1) {
-      header.textContent = groups[0].name;
-    } else {
-      header.textContent = `${groups.length} Groups (${groups[0].name}, +${groups.length - 1} more)`;
+    const count = groups.length;
+    if (badge) badge.textContent = `${count} selected`;
+    if (btnText) btnText.textContent = `${count} Group${count > 1 ? 's' : ''} Selected`;
+    if (header) {
+      header.textContent = count === 1 ? groups[0].name : `${count} Groups (${groups[0].name}, +${count - 1} more)`;
     }
-  } else if (state.settings?.targetGroupName) {
-    header.textContent = state.settings.targetGroupName;
+
+    if (pillsContainer) {
+      pillsContainer.innerHTML = groups.map(g => `
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium shadow-sm">
+          <i class="fa-solid fa-users text-[10px] text-emerald-400"></i>
+          <span class="truncate max-w-[140px]">${g.name}</span>
+          <button type="button" onclick="removeTargetGroup('${g.id}')" title="Remove" class="text-slate-400 hover:text-white ml-0.5">&times;</button>
+        </span>
+      `).join('');
+    }
+  } else if (state.settings?.targetGroupName && state.settings.targetGroupName !== 'Not Selected') {
+    if (badge) badge.textContent = '1 selected';
+    if (btnText) btnText.textContent = '1 Group Selected';
+    if (header) header.textContent = state.settings.targetGroupName;
+    if (pillsContainer) {
+      pillsContainer.innerHTML = `
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 text-[11px] font-medium">
+          <i class="fa-solid fa-users text-[10px] text-emerald-400"></i>
+          <span class="truncate max-w-[140px]">${state.settings.targetGroupName}</span>
+        </span>
+      `;
+    }
   } else {
-    header.textContent = 'None Selected';
+    if (badge) badge.textContent = '0 selected';
+    if (btnText) btnText.textContent = 'Select Target Groups';
+    if (header) header.textContent = 'None Selected';
+    if (pillsContainer) {
+      pillsContainer.innerHTML = '<span class="text-[11px] text-slate-500 italic">No groups selected. Click the button above to choose groups.</span>';
+    }
   }
 }
 
@@ -325,7 +419,7 @@ function applySettingsToUI(settings) {
   if (settings.messName) {
     document.getElementById('inputMessName').value = settings.messName;
   }
-  updateTargetGroupsHeader();
+  updateTargetGroupsDisplay();
   if (settings.template) {
     document.getElementById('templateTextarea').value = settings.template;
   }
@@ -620,41 +714,8 @@ async function saveTimingsSettings() {
   }
 }
 
-// --- Multiple Group Selector Save ---
-async function saveSelectedGroups() {
-  const checkboxes = document.querySelectorAll('.group-checkbox:checked');
-  const targetGroups = Array.from(checkboxes).map(cb => ({
-    id: cb.value,
-    name: decodeURIComponent(cb.getAttribute('data-name') || cb.value)
-  }));
-
-  if (targetGroups.length === 0) {
-    showToast('Please check at least one WhatsApp group!', 'error');
-    return;
-  }
-
-  const currentSettings = state.settings || {};
-  currentSettings.targetGroups = targetGroups;
-  currentSettings.targetGroupId = targetGroups[0].id; // backward compatibility
-  currentSettings.targetGroupName = targetGroups.map(g => g.name).join(', ');
-
-  try {
-    const res = await fetch('/api/settings', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(currentSettings)
-    });
-
-    const data = await res.json();
-    if (data.success) {
-      state.settings = data.settings;
-      updateTargetGroupsHeader();
-      showToast(`Saved ${targetGroups.length} target WhatsApp group(s)!`, 'success');
-    }
-  } catch (err) {
-    showToast('Failed to save groups: ' + err.message, 'error');
-  }
-}
+// Backward-compatibility alias
+const saveSelectedGroups = saveModalGroups;
 
 // --- Manual Actions ---
 async function sendMealNow(mealKey) {
