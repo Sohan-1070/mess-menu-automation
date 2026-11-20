@@ -95,12 +95,23 @@ class SchedulerService {
     }
 
     // Format items into clean bullet points
-    const itemLines = rawItems
-      .split(/[,;\n]+/)
-      .map(item => item.trim())
-      .filter(item => item.length > 0)
-      .map(item => `• ${item}`)
-      .join('\n');
+    let itemLines = '';
+    if (rawItems === 'Menu details not updated for today.') {
+      itemLines = '• Menu details not updated for today.';
+    } else {
+      // Split by newline if present, otherwise split by comma outside parentheses
+      const rawSplit = rawItems.includes('\n')
+        ? rawItems.split(/\n+/)
+        : rawItems.split(/,(?![^(]*\))/);
+
+      const items = rawSplit
+        .map(item => item.trim())
+        .filter(item => item.length > 0);
+
+      itemLines = items
+        .map(item => item.startsWith('•') ? item : `• ${item}`)
+        .join('\n');
+    }
 
     let template = settings.template || "🍽️ *{messName} • {mealUpper}* 🍽️\n📅 *{day}, {date}*\n━━━━━━━━━━━━━━━━━━━━\n{itemsList}\n━━━━━━━━━━━━━━━━━━━━\n⏰ *Serving Time:* {servingTime}\n✨ Have a wonderful meal!";
 

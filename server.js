@@ -118,29 +118,39 @@ app.post('/api/upload-menu', upload.single('menuFile'), async (req, res) => {
 
   try {
     console.log('[Upload] Parsing menu file: ' + originalName);
-    const parsedWeekly = await parseAnyMenuFile(filePath, originalName);
-    const validCount = countValidDays(parsedWeekly);
+    const parsedResult = await parseAnyMenuFile(filePath, originalName);
+    const weeklyData = parsedResult.weekly || parsedResult;
+    const validCount = countValidDays(weeklyData);
 
     if (validCount === 0) {
       throw new Error('No meal schedule could be identified in the file. Please ensure it contains days and meal sections.');
     }
 
     const currentMenu = scheduler.getMenu();
-    Object.keys(parsedWeekly).forEach(day => {
+    currentMenu.weekly = currentMenu.weekly || {};
+    currentMenu.specialDates = currentMenu.specialDates || {};
+
+    Object.keys(weeklyData).forEach(day => {
       if (day.startsWith('_')) return; // ignore internal metadata like _servingTimes
       if (!currentMenu.weekly[day]) currentMenu.weekly[day] = {};
-      if (parsedWeekly[day].breakfast) currentMenu.weekly[day].breakfast = parsedWeekly[day].breakfast;
-      if (parsedWeekly[day].lunch) currentMenu.weekly[day].lunch = parsedWeekly[day].lunch;
-      if (parsedWeekly[day].snacks) currentMenu.weekly[day].snacks = parsedWeekly[day].snacks;
-      if (parsedWeekly[day].dinner) currentMenu.weekly[day].dinner = parsedWeekly[day].dinner;
+      if (weeklyData[day].breakfast) currentMenu.weekly[day].breakfast = weeklyData[day].breakfast;
+      if (weeklyData[day].lunch) currentMenu.weekly[day].lunch = weeklyData[day].lunch;
+      if (weeklyData[day].snacks) currentMenu.weekly[day].snacks = weeklyData[day].snacks;
+      if (weeklyData[day].dinner) currentMenu.weekly[day].dinner = weeklyData[day].dinner;
     });
 
+    // Save specialDates if extracted
+    if (parsedResult.specialDates && Object.keys(parsedResult.specialDates).length > 0) {
+      Object.assign(currentMenu.specialDates, parsedResult.specialDates);
+    }
+
     // Update serving times if extracted from the sheet
-    if (parsedWeekly._servingTimes) {
+    const servingTimes = parsedResult._servingTimes || weeklyData._servingTimes;
+    if (servingTimes && Object.keys(servingTimes).length > 0) {
       const currentSettings = scheduler.getSettings();
-      Object.keys(parsedWeekly._servingTimes).forEach(meal => {
+      Object.keys(servingTimes).forEach(meal => {
         if (currentSettings.timings && currentSettings.timings[meal]) {
-          currentSettings.timings[meal].servingTime = parsedWeekly._servingTimes[meal];
+          currentSettings.timings[meal].servingTime = servingTimes[meal];
         }
       });
       fs.writeFileSync(scheduler.settingsFile, JSON.stringify(currentSettings, null, 2), 'utf8');
