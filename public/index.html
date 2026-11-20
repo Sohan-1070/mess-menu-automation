@@ -175,19 +175,30 @@
               </button>
             </div>
 
-            <!-- Target Group Selector -->
+            <!-- Multiple Target Groups Selector -->
             <div class="space-y-2">
-              <label class="block text-xs font-semibold text-slate-300">Target WhatsApp Group</label>
-              <div class="flex gap-2">
-                <select id="groupSelect" class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500">
-                  <option value="">-- Select a WhatsApp Group --</option>
-                </select>
-                <button onclick="loadGroups()" title="Fetch latest groups" class="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg text-xs transition">
-                  <i class="fa-solid fa-arrows-rotate"></i>
+              <div class="flex items-center justify-between">
+                <label class="block text-xs font-semibold text-slate-300">
+                  <i class="fa-solid fa-users text-emerald-400 mr-1"></i> Target WhatsApp Groups
+                </label>
+                <button onclick="loadGroups()" title="Refresh groups from WhatsApp" class="text-slate-400 hover:text-white text-[11px] flex items-center gap-1 transition">
+                  <i class="fa-solid fa-arrows-rotate"></i> Refresh
                 </button>
               </div>
-              <button onclick="saveSelectedGroup()" class="w-full mt-2 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition">
-                <i class="fa-solid fa-check"></i> Set as Target Group
+
+              <!-- Search input -->
+              <input type="text" id="groupSearchInput" oninput="filterGroupList()" placeholder="🔍 Filter groups..." class="w-full bg-slate-950 border border-slate-700 rounded-lg px-2.5 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500" />
+
+              <!-- Scrollable group list with checkboxes -->
+              <div id="groupChecklist" class="max-h-40 overflow-y-auto space-y-1 bg-slate-950/80 border border-slate-800 rounded-xl p-2 text-xs divide-y divide-slate-800/50">
+                <p class="text-slate-500 text-center py-3 text-[11px]">Loading groups...</p>
+              </div>
+
+              <!-- Selected groups summary -->
+              <div id="selectedGroupsBar" class="flex flex-wrap gap-1.5 pt-1"></div>
+
+              <button onclick="saveSelectedGroups()" class="w-full mt-2 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition">
+                <i class="fa-solid fa-check"></i> Save Target Groups
               </button>
             </div>
           </div>

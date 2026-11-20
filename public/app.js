@@ -61,7 +61,7 @@ function handleWsMessage(msg) {
       groupsCount: payload.groups?.length || 0
     });
     if (payload.groups) {
-      populateGroupsDropdown(payload.groups);
+      renderGroupChecklist(payload.groups);
     }
     showToast('WhatsApp connected successfully!', 'success');
   } else if (type === 'new_log') {
@@ -146,7 +146,7 @@ async function loadGroups() {
     const data = await res.json();
     if (data.success && data.groups) {
       state.groups = data.groups;
-      populateGroupsDropdown(data.groups);
+      renderGroupChecklist(data.groups);
     }
   } catch (err) {
     console.error('Failed to load groups:', err);
@@ -209,25 +209,113 @@ function updateQrCode(qrDataUrl) {
   }
 }
 
-function populateGroupsDropdown(groups) {
-  const select = document.getElementById('groupSelect');
-  const selectedId = state.settings?.targetGroupId || '';
+function getSelectedGroupIds() {
+  const current = state.settings?.targetGroups || [];
+  if (Array.isArray(current) && current.length > 0) {
+    return current.map(g => g.id);
+  }
+  if (state.settings?.targetGroupId) {
+    return [state.settings.targetGroupId];
+  }
+  return [];
+}
 
-  select.innerHTML = '<option value="">-- Select a WhatsApp Group --</option>';
+function renderGroupChecklist(groups) {
+  const container = document.getElementById('groupChecklist');
+  if (!container) return;
 
-  groups.forEach(g => {
-    const opt = document.createElement('option');
-    opt.value = g.id;
-    opt.textContent = `${g.name} (${g.participantsCount} members)`;
-    if (g.id === selectedId) {
-      opt.selected = true;
+  if (!groups || groups.length === 0) {
+    container.innerHTML = '<p class="text-slate-500 text-center py-3 text-[11px]">No WhatsApp groups found.</p>';
+    return;
+  }
+
+  const selectedIds = getSelectedGroupIds();
+
+  container.innerHTML = groups.map(g => {
+    const isChecked = selectedIds.includes(g.id);
+    return `
+      <label class="group-item flex items-center justify-between p-2 rounded-lg hover:bg-slate-900 cursor-pointer transition select-none" data-name="${g.name.toLowerCase()}">
+        <div class="flex items-center gap-2.5 overflow-hidden">
+          <input type="checkbox" value="${g.id}" data-name="${encodeURIComponent(g.name)}" ${isChecked ? 'checked' : ''} onchange="onGroupCheckboxChange()" class="group-checkbox rounded border-slate-700 bg-slate-900 text-emerald-500 focus:ring-0 cursor-pointer" />
+          <span class="text-xs font-medium text-slate-200 truncate">${g.name}</span>
+        </div>
+        <span class="text-[10px] text-slate-500 shrink-0 font-mono ml-2">${g.participantsCount} members</span>
+      </label>
+    `;
+  }).join('');
+
+  updateSelectedGroupsUI();
+  updateTargetGroupsHeader();
+}
+
+function filterGroupList() {
+  const query = (document.getElementById('groupSearchInput')?.value || '').toLowerCase().trim();
+  const items = document.querySelectorAll('.group-item');
+  items.forEach(item => {
+    const name = item.getAttribute('data-name') || '';
+    if (!query || name.includes(query)) {
+      item.classList.remove('hidden');
+    } else {
+      item.classList.add('hidden');
     }
-    select.appendChild(opt);
   });
+}
 
-  const headerGroup = document.getElementById('targetGroupNameHeader');
-  if (state.settings?.targetGroupName) {
-    headerGroup.textContent = state.settings.targetGroupName;
+function onGroupCheckboxChange() {
+  updateSelectedGroupsUI();
+}
+
+function updateSelectedGroupsUI() {
+  const bar = document.getElementById('selectedGroupsBar');
+  if (!bar) return;
+
+  const checkboxes = document.querySelectorAll('.group-checkbox:checked');
+  const selectedCount = checkboxes.length;
+
+  if (selectedCount === 0) {
+    bar.innerHTML = '<span class="text-[11px] text-amber-400/80 italic">No groups selected yet. Check groups above to broadcast!</span>';
+    return;
+  }
+
+  bar.innerHTML = `
+    <div class="w-full text-[11px] text-emerald-400 font-semibold mb-1 flex items-center justify-between">
+      <span>${selectedCount} Group${selectedCount > 1 ? 's' : ''} Selected for Broadcast</span>
+    </div>
+  ` + Array.from(checkboxes).map(cb => {
+    const id = cb.value;
+    const name = decodeURIComponent(cb.getAttribute('data-name') || id);
+    return `
+      <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 text-[10px] font-medium">
+        <span class="truncate max-w-[120px]">${name}</span>
+        <button type="button" onclick="uncheckGroup('${id}')" class="text-slate-400 hover:text-white">&times;</button>
+      </span>
+    `;
+  }).join('');
+}
+
+function uncheckGroup(id) {
+  const cb = document.querySelector(`.group-checkbox[value="${id}"]`);
+  if (cb) {
+    cb.checked = false;
+    updateSelectedGroupsUI();
+  }
+}
+
+function updateTargetGroupsHeader() {
+  const header = document.getElementById('targetGroupNameHeader');
+  if (!header) return;
+
+  const groups = state.settings?.targetGroups || [];
+  if (Array.isArray(groups) && groups.length > 0) {
+    if (groups.length === 1) {
+      header.textContent = groups[0].name;
+    } else {
+      header.textContent = `${groups.length} Groups (${groups[0].name}, +${groups.length - 1} more)`;
+    }
+  } else if (state.settings?.targetGroupName) {
+    header.textContent = state.settings.targetGroupName;
+  } else {
+    header.textContent = 'None Selected';
   }
 }
 
@@ -237,9 +325,7 @@ function applySettingsToUI(settings) {
   if (settings.messName) {
     document.getElementById('inputMessName').value = settings.messName;
   }
-  if (settings.targetGroupName) {
-    document.getElementById('targetGroupNameHeader').textContent = settings.targetGroupName;
-  }
+  updateTargetGroupsHeader();
   if (settings.template) {
     document.getElementById('templateTextarea').value = settings.template;
   }
@@ -534,22 +620,23 @@ async function saveTimingsSettings() {
   }
 }
 
-// --- Group Selector ---
-async function saveSelectedGroup() {
-  const select = document.getElementById('groupSelect');
-  const selectedGroupId = select.value;
+// --- Multiple Group Selector Save ---
+async function saveSelectedGroups() {
+  const checkboxes = document.querySelectorAll('.group-checkbox:checked');
+  const targetGroups = Array.from(checkboxes).map(cb => ({
+    id: cb.value,
+    name: decodeURIComponent(cb.getAttribute('data-name') || cb.value)
+  }));
 
-  if (!selectedGroupId) {
-    showToast('Please select a WhatsApp group from the list!', 'error');
+  if (targetGroups.length === 0) {
+    showToast('Please check at least one WhatsApp group!', 'error');
     return;
   }
 
-  const selectedOption = select.options[select.selectedIndex];
-  const groupName = selectedOption.textContent.split('(')[0].trim();
-
   const currentSettings = state.settings || {};
-  currentSettings.targetGroupId = selectedGroupId;
-  currentSettings.targetGroupName = groupName;
+  currentSettings.targetGroups = targetGroups;
+  currentSettings.targetGroupId = targetGroups[0].id; // backward compatibility
+  currentSettings.targetGroupName = targetGroups.map(g => g.name).join(', ');
 
   try {
     const res = await fetch('/api/settings', {
@@ -561,11 +648,11 @@ async function saveSelectedGroup() {
     const data = await res.json();
     if (data.success) {
       state.settings = data.settings;
-      document.getElementById('targetGroupNameHeader').textContent = groupName;
-      showToast(`Target WhatsApp group set to: ${groupName}`, 'success');
+      updateTargetGroupsHeader();
+      showToast(`Saved ${targetGroups.length} target WhatsApp group(s)!`, 'success');
     }
   } catch (err) {
-    showToast('Failed to save group: ' + err.message, 'error');
+    showToast('Failed to save groups: ' + err.message, 'error');
   }
 }
 

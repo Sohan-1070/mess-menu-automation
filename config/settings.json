@@ -1,5 +1,6 @@
 {
   "messName": "Hostel Mess",
+  "targetGroups": [],
   "targetGroupId": "",
   "targetGroupName": "Not Selected",
   "port": 3000,

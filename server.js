@@ -96,32 +96,116 @@ app.post('/api/menu', (req, res) => {
   }
 });
 
-// 4. Excel / CSV / PDF Menu Upload (Universal Parser)
+// 4. Excel / CSV / PDF Menu Upload
 app.post('/api/upload-menu', upload.single('menuFile'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, error: 'No file uploaded!' });
   }
 
   const filePath = req.file.path;
-  const originalName = req.file.originalname;
+  const originalName = req.file.originalname.toLowerCase();
+  const isPdf = originalName.endsWith('.pdf') || req.file.mimetype === 'application/pdf';
 
   try {
-    console.log('[Upload] Parsing menu file: ' + originalName);
-    const parsedWeekly = await parseAnyMenuFile(filePath, originalName);
-    const validCount = countValidDays(parsedWeekly);
+    const currentMenu = scheduler.getMenu();
+    let updatedCount = 0;
 
-    if (validCount === 0) {
-      throw new Error('No meal schedule could be identified in the file. Please ensure it contains days and meal sections.');
+    if (isPdf) {
+      // PDF Processing
+      console.log(`[Upload] Processing PDF menu: ${req.file.originalname}`);
+      const extractedText = await extractTextFromPdf(filePath);
+      
+      if (!extractedText || extractedText.trim().length === 0) {
+        throw new Error('Could not extract text from this PDF. Please ensure it is a digital text PDF (not a flat image or scanned photo).');
+      }
+
+      const parsedWeekly = parseMenuFromText(extractedText);
+      const parsedDays = Object.keys(parsedWeekly);
+
+      if (parsedDays.length === 0) {
+        throw new Error('Could not automatically identify day or meal sections in this PDF. Please verify the PDF contains meal names (Breakfast, Lunch, Dinner) or use the Excel template.');
+      }
+
+      parsedDays.forEach(day => {
+        if (!currentMenu.weekly[day]) currentMenu.weekly[day] = {};
+        if (parsedWeekly[day].breakfast) currentMenu.weekly[day].breakfast = parsedWeekly[day].breakfast;
+        if (parsedWeekly[day].lunch) currentMenu.weekly[day].lunch = parsedWeekly[day].lunch;
+        if (parsedWeekly[day].snacks) currentMenu.weekly[day].snacks = parsedWeekly[day].snacks;
+        if (parsedWeekly[day].dinner) currentMenu.weekly[day].dinner = parsedWeekly[day].dinner;
+        updatedCount++;
+      });
+    } else {
+      // Excel / CSV Processing
+      const workbook = xlsx.readFile(filePath);
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rawRows = xlsx.utils.sheet_to_json(sheet, { defval: '' });
+
+      if (!rawRows || rawRows.length === 0) {
+        throw new Error('The uploaded spreadsheet is empty!');
+      }
+
+      const daysMap = {
+        mon: 'Monday',
+        tue: 'Tuesday',
+        wed: 'Wednesday',
+        thu: 'Thursday',
+        fri: 'Friday',
+        sat: 'Saturday',
+        sun: 'Sunday'
+      };
+
+      rawRows.forEach(row => {
+        let dayVal = '';
+        let breakfastVal = '';
+        let lunchVal = '';
+        let snacksVal = '';
+        let dinnerVal = '';
+
+        Object.keys(row).forEach(key => {
+          const cleanKey = key.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+          const val = String(row[key]).trim();
+
+          if (cleanKey.includes('day') || cleanKey === 'dayofweek') {
+            dayVal = val;
+          } else if (cleanKey.includes('break') || cleanKey.includes('bfast') || cleanKey === 'bf') {
+            breakfastVal = val;
+          } else if (cleanKey.includes('lunch') || cleanKey.includes('afternoon')) {
+            lunchVal = val;
+          } else if (cleanKey.includes('snack') || cleanKey.includes('tea') || cleanKey.includes('hitea') || cleanKey.includes('refreshment')) {
+            snacksVal = val;
+          } else if (cleanKey.includes('dinner') || cleanKey.includes('night') || cleanKey.includes('supper')) {
+            dinnerVal = val;
+          }
+        });
+
+        if (dayVal) {
+          const lowerDay = dayVal.toLowerCase();
+          let matchedDay = null;
+          for (const [prefix, full] of Object.entries(daysMap)) {
+            if (lowerDay.includes(prefix)) {
+              matchedDay = full;
+              break;
+            }
+          }
+
+          if (matchedDay) {
+            if (!currentMenu.weekly[matchedDay]) {
+              currentMenu.weekly[matchedDay] = {};
+            }
+            if (breakfastVal) currentMenu.weekly[matchedDay].breakfast = breakfastVal;
+            if (lunchVal) currentMenu.weekly[matchedDay].lunch = lunchVal;
+            if (snacksVal) currentMenu.weekly[matchedDay].snacks = snacksVal;
+            if (dinnerVal) currentMenu.weekly[matchedDay].dinner = dinnerVal;
+            updatedCount++;
+          }
+        }
+      });
     }
 
-    const currentMenu = scheduler.getMenu();
-    Object.keys(parsedWeekly).forEach(day => {
-      if (!currentMenu.weekly[day]) currentMenu.weekly[day] = {};
-      if (parsedWeekly[day].breakfast) currentMenu.weekly[day].breakfast = parsedWeekly[day].breakfast;
-      if (parsedWeekly[day].lunch) currentMenu.weekly[day].lunch = parsedWeekly[day].lunch;
-      if (parsedWeekly[day].snacks) currentMenu.weekly[day].snacks = parsedWeekly[day].snacks;
-      if (parsedWeekly[day].dinner) currentMenu.weekly[day].dinner = parsedWeekly[day].dinner;
-    });
+    if (updatedCount === 0) {
+      throw new Error('Could not identify day columns. Please ensure meals include days (Mon-Sun) and meals (Breakfast, Lunch, Snacks, Dinner).');
+    }
 
     fs.writeFileSync(scheduler.menuFile, JSON.stringify(currentMenu, null, 2), 'utf8');
 
@@ -130,11 +214,10 @@ app.post('/api/upload-menu', upload.single('menuFile'), async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Successfully imported menu for ' + validCount + ' days from "' + originalName + '"!',
+      message: `Successfully imported menu for ${updatedCount} days from ${isPdf ? 'PDF' : 'Spreadsheet'}!`,
       menu: currentMenu
     });
   } catch (err) {
-    console.error('[Upload Error]', err.message);
     if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
     res.status(400).json({ success: false, error: err.message });
   }
@@ -171,41 +254,62 @@ app.post('/api/send-now', async (req, res) => {
 
   try {
     const result = await scheduler.sendMealNotification(meal, true);
-    broadcast('new_log', result.log);
+    if (result.logs) {
+      result.logs.forEach(l => broadcast('new_log', l));
+    }
     res.json({ success: true, ...result });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// 8. Custom Test Message
+// 8. Custom Test Message (Single or Multi-Group Broadcast)
 app.post('/api/test-message', async (req, res) => {
   const { groupId, text } = req.body;
-  const targetGroup = groupId || scheduler.getSettings().targetGroupId;
+  let targetGroups = [];
 
-  if (!targetGroup) {
-    return res.status(400).json({ success: false, error: 'No WhatsApp group selected!' });
+  if (groupId) {
+    targetGroups.push({ id: groupId, name: 'Selected Group' });
+  } else {
+    targetGroups = scheduler.getTargetGroups();
   }
 
-  try {
-    const messageText = text || '🔔 *Test Notification from Mess Automation Bot* 🤖\nConnection to this WhatsApp group is working properly!';
-    await whatsapp.sendMessage(targetGroup, messageText);
-
-    const log = scheduler.addLog({
-      meal: 'test',
-      mealTitle: 'Test Message',
-      groupName: scheduler.getSettings().targetGroupName || targetGroup,
-      groupId: targetGroup,
-      status: 'success',
-      type: 'manual',
-      preview: messageText.substring(0, 80)
-    });
-
-    broadcast('new_log', log);
-    res.json({ success: true, message: 'Test message sent successfully!' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+  if (targetGroups.length === 0) {
+    return res.status(400).json({ success: false, error: 'No WhatsApp group selected! Please select at least one group.' });
   }
+
+  const messageText = text || '🔔 *Test Notification from MessMate Bot* 🤖\nConnection to this WhatsApp group is verified and working!';
+  const sentGroups = [];
+
+  for (let i = 0; i < targetGroups.length; i++) {
+    const g = targetGroups[i];
+    try {
+      await whatsapp.sendMessage(g.id, messageText);
+      const log = scheduler.addLog({
+        meal: 'test',
+        mealTitle: 'Test Message',
+        groupName: g.name,
+        groupId: g.id,
+        status: 'success',
+        type: 'manual',
+        preview: messageText.substring(0, 80)
+      });
+      broadcast('new_log', log);
+      sentGroups.push(g.name);
+
+      if (i < targetGroups.length - 1) {
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    } catch (e) {
+      console.error(`[Test Message Error] Failed sending to ${g.name}:`, e.message);
+    }
+  }
+
+  if (sentGroups.length === 0) {
+    return res.status(500).json({ success: false, error: 'Failed to send test message to groups.' });
+  }
+
+  res.json({ success: true, message: `Test message sent successfully to ${sentGroups.length} group(s)!` });
 });
 
 // 9. WhatsApp Disconnect

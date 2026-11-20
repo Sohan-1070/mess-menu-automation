@@ -123,12 +123,26 @@ class SchedulerService {
     };
   }
 
-  async sendMealNotification(mealKey, isManual = false) {
+  getTargetGroups() {
     const settings = this.getSettings();
-    const targetGroupId = settings.targetGroupId;
+    let groups = settings.targetGroups || [];
+    if (!Array.isArray(groups)) groups = [];
 
-    if (!targetGroupId) {
-      const err = 'No target WhatsApp group configured in Settings!';
+    // Backward compatibility with legacy targetGroupId
+    if (groups.length === 0 && settings.targetGroupId) {
+      groups.push({
+        id: settings.targetGroupId,
+        name: settings.targetGroupName || settings.targetGroupId
+      });
+    }
+    return groups;
+  }
+
+  async sendMealNotification(mealKey, isManual = false) {
+    const groups = this.getTargetGroups();
+
+    if (groups.length === 0) {
+      const err = 'No target WhatsApp groups selected in Settings!';
       console.warn(`[Scheduler] Cannot send ${mealKey}: ${err}`);
       this.addLog({
         meal: mealKey,
@@ -140,35 +154,53 @@ class SchedulerService {
     }
 
     const { message, mealTitle } = this.formatMealMessage(mealKey);
+    const results = [];
+    const logs = [];
 
-    try {
-      await whatsapp.sendMessage(targetGroupId, message);
-      console.log(`[Scheduler] Successfully sent ${mealTitle} notification to ${settings.targetGroupName || targetGroupId}`);
-      
-      const log = this.addLog({
-        meal: mealKey,
-        mealTitle,
-        groupName: settings.targetGroupName || targetGroupId,
-        groupId: targetGroupId,
-        status: 'success',
-        type: isManual ? 'manual' : 'scheduled',
-        preview: message.substring(0, 80) + '...'
-      });
+    for (let i = 0; i < groups.length; i++) {
+      const group = groups[i];
+      try {
+        await whatsapp.sendMessage(group.id, message);
+        console.log(`[Scheduler] Sent ${mealTitle} notification to "${group.name}" (${group.id})`);
+        
+        const log = this.addLog({
+          meal: mealKey,
+          mealTitle,
+          groupName: group.name,
+          groupId: group.id,
+          status: 'success',
+          type: isManual ? 'manual' : 'scheduled',
+          preview: message.substring(0, 80) + '...'
+        });
+        logs.push(log);
+        results.push({ groupId: group.id, groupName: group.name, status: 'success' });
 
-      return { success: true, log, message };
-    } catch (err) {
-      console.error(`[Scheduler] Error sending ${mealTitle}:`, err.message);
-      this.addLog({
-        meal: mealKey,
-        mealTitle,
-        groupName: settings.targetGroupName || targetGroupId,
-        groupId: targetGroupId,
-        status: 'failed',
-        error: err.message,
-        type: isManual ? 'manual' : 'scheduled'
-      });
-      throw err;
+        // Delay 1.5s between multiple groups to prevent WhatsApp flood blocks
+        if (i < groups.length - 1) {
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      } catch (err) {
+        console.error(`[Scheduler] Failed sending ${mealTitle} to "${group.name}":`, err.message);
+        const log = this.addLog({
+          meal: mealKey,
+          mealTitle,
+          groupName: group.name,
+          groupId: group.id,
+          status: 'failed',
+          error: err.message,
+          type: isManual ? 'manual' : 'scheduled'
+        });
+        logs.push(log);
+        results.push({ groupId: group.id, groupName: group.name, status: 'failed', error: err.message });
+      }
     }
+
+    const anySuccess = results.some(r => r.status === 'success');
+    if (!anySuccess && results.length > 0) {
+      throw new Error(results[0].error || 'Failed sending to groups');
+    }
+
+    return { success: true, results, logs, message };
   }
 
   startAll() {
