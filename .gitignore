@@ -3,7 +3,9 @@ npm-debug.log*
 uploads/*
 !uploads/.gitkeep
 auth_info_baileys/
+data/logs.json
 .env
 .DS_Store
 *.log
+
 
